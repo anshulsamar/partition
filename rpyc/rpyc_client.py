@@ -22,7 +22,7 @@ if len(sys.argv) < 3:
 clientPort = int(sys.argv[1])
 serverPort = int(sys.argv[2])
 
-proxy = rpyc.connect('localhost', serverPort, service=ClientService, config={'allow_public_attrs': True})
+proxy = rpyc.connect('localhost', serverPort, service=ClientService)#, config={'allow_public_attrs': True})
 
 proxy.root.add_vertex(serverPort, clientPort, 12)
 
