@@ -1,12 +1,5 @@
 import rpyc
-
-class ServerService(rpyc.Service):
-
-    def exposed_add_vertex(self, serverPort, vertexNum):
-      serverFile = open(str(serverPort) + "vertices.txt", "a")
-      serverFile.write(str(vertexNum) + "\n")
-      serverFile.close()
-
+import sys
 
 class ClientService(rpyc.Service):
 
@@ -14,20 +7,22 @@ class ClientService(rpyc.Service):
       clientFileName = str(clientPort) + "vertices.txt"
       clientFile = open(clientFileName, "r")
       lines = clientFile.readlines()
-      lines.close()
-      
+      clientFile.close()     
+ 
       clientFile = open(clientFileName, "w")
       for line in lines:
         if int(line) != vertexNum:
           clientFile.write(line)
       clientFile.close()
 
-from rpyc.utils.server import ThreadedServer
-t = ThreadedServer(ServerService, port = 20000)
-#t.start()
-#t.close()
+if len(sys.argv) < 3:
+    print("Usage: python rpyc_client.py [client_port_num] [server_port_num]")
+    exit()
 
-proxy = rpyc.connect('localhost', 10000, service=ClientService, config={'allow_public_attrs': True})
+clientPort = int(sys.argv[1])
+serverPort = int(sys.argv[2])
 
-proxy.root.add_vertex(10000, 2)
+proxy = rpyc.connect('localhost', serverPort, service=ClientService, config={'allow_public_attrs': True})
+
+proxy.root.add_vertex(serverPort, clientPort, 12)
 
