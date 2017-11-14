@@ -1,11 +1,26 @@
+You will need to install rpyc
 
+On Linux, if you have pip, it is:
 
-First inspect 10001vertices.txt, 10002vertices.txt
+pip install rpyc
+
+===============================================================================
+
+run 
+
+reset.py 10001 10002 10003
+
+to reset the vertices files for those servers
+
+===============================================================================
+
+First inspect 10001vertices.txt, 10002vertices.txt, 10003vertices.txt
 
 Next, run 
 
 sh nodes.sh
 
 This will transfer vertex 12 from server at port 10002 to server at port 10001
-
+And then, it will transsfer vertex 12 from server at port 10001 to server at
+port 1002
 
