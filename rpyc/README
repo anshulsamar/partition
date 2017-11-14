@@ -1,0 +1,9 @@
+First inspect 10001vertices.txt and 10002vertices.txt
+
+Next, run 
+
+sh nodes.sh
+
+This will transfer vertex 12 from server at port 10002 to server at port 10001
+
+
