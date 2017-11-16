@@ -147,17 +147,17 @@ def stats():
 # to better node if space is available. Simple
 # hueristic - if v has most neighbors in n, move to node
 # n. 
-def partition_a ():
-    node = random.choice(list(nodes))
-    v = random.choice(list(node_to_v[node]))
+def partition_a (nodes_lst, node_to_v_map, v_to_node_map):
+    node = random.choice(list(nodes_lst))
+    v = random.choice(list(node_to_v_map[node]))
     # out and in neighbors
     out_n, in_n = out_in(v)
     # out edges by node
     out_counts = {}
-    for n in nodes:
+    for n in nodes_lst:
         out_counts[n] = 0
     for vi in out_n:
-        out_node = v_to_node[vi]
+        out_node = v_to_node_map[vi]
         out_counts[out_node] = out_counts[out_node] + 1
     best_node = max(out_counts.iterkeys(),
                    key=lambda k: out_counts[k])
@@ -166,9 +166,9 @@ def partition_a ():
     # move if space in best_node
     if diff > threshold and capacity[best_node] > 0:
         print str(v) + ": " + str(node) + " -> " + str(best_node)
-        v_to_node[vi] = best_node
-        node_to_v[node].remove(v)
-        node_to_v[best_node].add(v)
+        v_to_node_map[vi] = best_node
+        node_to_v_map[node].remove(v)
+        node_to_v_map[best_node].add(v)
         capacity[node] = capacity[node] - 1
         capacity[best_node] = capacity[best_node] + 1
     
@@ -181,5 +181,5 @@ read_edges(sys.argv[2])
 # print_data_structures()
 # stats()
 print_graph('test_graph')
-partition_a ()
+partition_a (nodes, node_to_v, v_to_node)
 print_graph('test_graph_2')
