@@ -15,8 +15,8 @@ THIRD=$!
 
 echo $THIRD
 
-python rpyc_client.py 10002 10001
-python rpyc_client.py 10001 10003
+python rpyc_connection.py 10002 10001 12
+python rpyc_connection.py 10001 10003 12
 
 kill $FIRST
 kill $SECOND

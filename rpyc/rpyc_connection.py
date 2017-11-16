@@ -16,13 +16,14 @@ class ClientService(rpyc.Service):
       clientFile.close()
 
 if len(sys.argv) < 3:
-    print("Usage: python rpyc_client.py [client_port_num] [server_port_num]")
+    print("Usage: python rpyc_client.py [client_port_num] [server_port_num] [vertex_to_move_from_client_to_server]")
     exit()
 
 clientPort = int(sys.argv[1])
 serverPort = int(sys.argv[2])
+vertex = int(sys.argv[3])
 
 proxy = rpyc.connect('localhost', serverPort, service=ClientService)#, config={'allow_public_attrs': True})
 
-proxy.root.add_vertex(serverPort, clientPort, 12)
+proxy.root.add_vertex(serverPort, clientPort, vertex)
 
