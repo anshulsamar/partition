@@ -23,7 +23,6 @@ def server_setup(portNum):
     t = ThreadedServer(ServerService, port=portNum)
     t.start()
 
-
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("Usage: python rpyc_server.py [server_port_num]")
