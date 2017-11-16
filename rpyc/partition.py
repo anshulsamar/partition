@@ -56,6 +56,12 @@ def read_vertices(filename):
 
         node_f.close()
 
+    # create a file that contains the v_to_node dictionary
+    np.save('npy_files/v_to_node.npy', v_to_node)
+
+    # create a file that contains the node_to_v dictionary
+    np.save('npy_files/node_to_v.npy', node_to_v)
+
 # Read in edge list
 def read_edges(filename):
     with open(filename, 'rb') as f:
@@ -66,6 +72,11 @@ def read_edges(filename):
             v_to_v[v1].add(v2)
             v_to_v[v2].add(v1)
             edges.add((v1,v2))
+
+    f.close()
+
+    # write v_to_v dictionary to a file
+    np.save('npy_files/v_to_v.npy', v_to_v)
 
 # Prints graph and nodes (based on graphviz ex)
 def print_graph (fname):
