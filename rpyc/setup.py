@@ -84,6 +84,9 @@ def read_edges(filename):
     # write v_to_v dictionary to a file
     np.save('npy_files/v_to_v.npy', v_to_v)
 
+    # write edges set to a file
+    np.save('npy_files/edges.npy', GraphFeatures.edges)
+
 '''
 # Prints graph and nodes (based on graphviz ex)
 def print_graph (fname, nodesList, edgesList, node_to_v_map):

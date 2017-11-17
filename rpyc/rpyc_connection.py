@@ -144,6 +144,7 @@ if __name__ == '__main__':
         if bestNode in clientServerList:
             proxy.root.add_vertex(int(bestNode) + GraphFeatures.server_prefix, clientNode + GraphFeatures.server_prefix, int(v))
 
+    GraphFeatures.edges = np.load('npy_files/edges.npy').item()
     print "edges: ", GraphFeatures.edges
     print_graph('test_graph' + clientPortStr, GraphFeatures.nodes, GraphFeatures.edges, node_to_v)
 
