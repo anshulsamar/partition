@@ -7,6 +7,7 @@ from graphfunc import GraphFeatures
 from rpyc.utils.server import ThreadedServer
 
 class ClientService(rpyc.Service):
+    print "edges: ", GraphFeatures.edges
 
     def exposed_remove_vertex(self, clientPort, vertexNum):
       clientFileName = str(clientPort) + "vertices.txt"
@@ -79,6 +80,7 @@ def partition_a (nodes_lst, node_to_v_map, v_to_node_map):
     # diff = num_outedges - num_inedges
     diff = out_counts[best_node] - len(in_n)
     # move if space in best_node
+    GraphFeatures.capacity = np.load('npy_files/capacity.npy').item()
     print "capacity: ", GraphFeatures.capacity
     if diff > GraphFeatures.threshold and GraphFeatures.capacity[best_node] > 0:
         print str(v) + ": " + str(node) + " -> " + str(best_node)
@@ -130,14 +132,19 @@ if __name__ == '__main__':
 
     tpl = partition_a(clientServerList, node_to_v, v_to_node)
 
+    print "tpl: ", tpl
+
     if tpl != None:
         (v, clientNode, bestNode) = tpl
 
+        print "clientNode: ", clientNode
+        print "bestNode: ", bestNode
         # if somehow we got a vertex that can be transferred from this client
         # to the other servers, go for it
-        if bestNode in serverPortList:
-            proxy.root.add_vertex(int(bestNode), clientPort, int(v))
+        if bestNode in clientServerList:
+            proxy.root.add_vertex(int(bestNode) + GraphFeatures.server_prefix, clientNode + GraphFeatures.server_prefix, int(v))
 
+    print "edges: ", GraphFeatures.edges
     print_graph('test_graph' + clientPortStr, GraphFeatures.nodes, GraphFeatures.edges, node_to_v)
 
     # run server code

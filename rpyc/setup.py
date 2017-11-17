@@ -33,6 +33,8 @@ for i in GraphFeatures.nodes:
 
 print "cap: ", GraphFeatures.capacity
 
+np.save('npy_files/capacity.npy', GraphFeatures.capacity)
+
 # Read in vertex list and populate nodes
 def read_vertices(filename):
     with open(filename, 'rb') as f:
@@ -156,6 +158,7 @@ read_vertices(sys.argv[1])
 read_edges(sys.argv[2])
 # print_data_structures()
 # stats()
+print "first edges: ", GraphFeatures.edges
 print_graph('test_graph', GraphFeatures.nodes, GraphFeatures.edges, node_to_v)
 #partition_a (nodes, node_to_v, v_to_node)
 #print_graph('test_graph_2')
