@@ -8,9 +8,9 @@ from graphviz import Graph
 import sys
 
 # Redundant data structures for easy access
-N = 3                                   # max nodes
+N = 5                                   # max nodes
 nodes = set(range(0,N))                 # node identifiers
-max_capacity = 10                       # max vertices/node
+max_capacity = 5                        # max vertices/node
 v_to_node = {}                          # vertex-node map
 node_to_v = {}                          # node-vertex map
 v_to_v = {}                             # vertex-vertex map
@@ -106,25 +106,17 @@ def stats():
         in_edges = 0
         # total edges leaving node
         out_edges = 0
-        # avg across vertices of out neighbors
-        total_avg = 0
         for v in vertices:
             out_n, in_n = out_in(v)
             v_out_node = len(out_n)
             v_in_node = len(in_n)
-            # frac of out neighbors
-            avg_out = float(v_out_node)/len(v_to_v[v])
-            # update global frac
-            total_avg = total_avg + avg_out
             # update edge counts
             in_edges = in_edges + v_in_node
             out_edges = out_edges + v_out_node
 
-        total_avg = total_avg/len(vertices)
         print "Node: " + str(node)
         print "\tout edges: " + str(out_edges)
         print "\tin edges: " + str(in_edges)
-        print "\tavg out: " + str(total_avg)
 
 # Randomly picks node. Attempts to move a random vertex
 # to better node if space is available. Simple
@@ -132,6 +124,7 @@ def stats():
 # n. 
 def partition_a ():
     node = random.choice(list(nodes))
+    if len(node_to_v[node]) == 0: return
     v = random.choice(list(node_to_v[node]))
     # out and in neighbors
     out_n, in_n = out_in(v)
@@ -149,20 +142,24 @@ def partition_a ():
     # move if space in best_node
     if diff > threshold and capacity[best_node] > 0:
         print str(v) + ": " + str(node) + " -> " + str(best_node)
-        v_to_node[vi] = best_node
+        v_to_node[v] = best_node
         node_to_v[node].remove(v)
         node_to_v[best_node].add(v)
-        capacity[node] = capacity[node] - 1
-        capacity[best_node] = capacity[best_node] + 1
+        capacity[node] = capacity[node] + 1
+        capacity[best_node] = capacity[best_node] - 1
+        # print(v_to_node)
+        # print(node_to_v)
     
-if len(sys.argv) < 3:
-    print("Usage: python partition.py [vertex_file] [edges_file]")
+if len(sys.argv) < 4:
+    print("Usage: python partition.py [vertex_file] [edges_file] [#cycle]")
     exit()
 
 read_vertices(sys.argv[1])
 read_edges(sys.argv[2])
 # print_data_structures()
-# stats()
-print_graph('test_graph')
-partition_a ()
-print_graph('test_graph_2')
+stats()
+print_graph('1')
+for i in range(0,int(sys.argv[3])):
+    partition_a ()
+print_graph('2')
+stats()
