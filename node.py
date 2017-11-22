@@ -13,6 +13,7 @@ from time import sleep
 import pickle
 import threading
 import os
+import random
 
 def server():
     # start server
@@ -26,30 +27,53 @@ def server():
             print("Accepted connection from: " + str(client_address))
             sock = psocket(sock, blocking = True)
             data = sock.precv()
-            print(data)
-            sock.psend(data)
+            print("Recv: " + data)
             sock.close()
-        except: continue
+        except:
+            sleep(1)
+            continue
+
+def out_in (v):
+    node = v_to_node[v]
+    out_n = set()
+    in_n = set()
+    for vi in v_to_v[v]:
+        if v_to_node[vi] == node:
+            in_n.add(vi)
+        else:
+            out_n.add(vi)
+    return out_n, in_n
 
 def client():
     while True:
-        for node in nodes:
-            if node == my_node: continue
+        v = random.choice(list(v_set))
+        print "Picked vertex: " + str(v)
+        # out and in neighbors
+        out_n, in_n = out_in(v)
+        # out edges by node
+        out_counts = {}
+        for n in nodes:
+            out_counts[n] = 0
+        for vi in out_n:
+            out_node = v_to_node[vi]
+            out_counts[out_node] = out_counts[out_node] + 1
+        best_node = max(out_counts.iterkeys(),
+                        key=lambda k: out_counts[k])
+        # diff is num_outedges - num_inedges
+        diff = out_counts[best_node] - len(in_n)
+
+        if diff > 0 and capacity > 0:        
             try:
                 # connects to node
-                print "Client: Attempting --> Node: " + str(node)
+                print "Client: Attempting --> Node: " + str(best_node)
                 sock = psocket(blocking = True)
-                sock.pconnect('localhost', node_to_port[node])
+                sock.pconnect('localhost', node_to_port[best_node])
                 print "Client: Connected!"
             
                 # send port number to master
-                msg = "Client Send: Hello from Node: " + str(my_node)
+                msg = "Hello from Node: " + str(my_node)
                 sock.psend(msg)
-            
-                # get list of node to ports from master
-                data = sock.precv()
                 sock.close()
-                print("Client Recv: " + data)
                 break
             except:
                 sleep(1)

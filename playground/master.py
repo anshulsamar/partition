@@ -4,6 +4,12 @@ from psocket import psocket
 import threading
 from psocket import ERROR
 
+def serialize_dict (d):
+    config = ""
+    for i,v in d.iteritems():
+        config += str(i) + ":" + str(v) + ","
+    return config[0:-1]
+
 node_to_port = {'master':10000}
 
 # socket to accept connections from new workers
@@ -22,10 +28,9 @@ while True:
         if data[0:4] == "<ID>":
             ind1 = data.find("<NODE>")
             ind2 = data.find("<PORT>")
+            key = data[ind1+6:ind2]
+            val = data[ind2+6:]
             node_to_port[data[ind1+6:ind2]] = int(data[ind2+6:])
-            config = ""
-            for i,v in node_to_port.iteritems():
-                config += str(i) + ":" + str(v) + ","
-            sock.psend(config[0:-1])
+            sock.psend(serialize_dict(node_to_port))
     except: continue
         

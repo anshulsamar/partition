@@ -117,5 +117,5 @@ if (len(sys.argv) < 2):
 
 read_vertices(sys.argv[3])
 read_edges(sys.argv[4])
-print_graph('t1')
+print_graph('starting_config')
 create_nodes()
