@@ -15,6 +15,56 @@ import threading
 import os
 import random
 
+
+def parse_vertex_info(vertex_msg):
+    '''
+    Parses a vertex message of the form:
+    <ID>10<\ID><EDGE>1, 2, 3<\EDGE><NODE>1, 3, 4<\NODE>
+
+    This a vertex message one node sends to another to transfer
+    the vertex to that node
+
+    '''
+    
+    IDTAG = "<ID>"
+    IDENDTAG = "<\ID>"
+    EDGETAG = "<EDGE>"
+    EDGEENDTAG = "<\EDGE>"
+    NODETAG = "<NODE>"
+    NODEENDTAG = "<\NODE>"
+
+    if IDTAG not in vertex_msg or \
+       IDENDTAG not in vertex_msg or \
+       EDGETAG not in vertex_msg or \
+       EDGEENDTAG not in vertex_msg or \
+       NODETAG not in vertex_msg or \
+       NODEENDTAG not in vertex_msg:
+         print "This message does not have all the tags"
+         return None
+
+    # Extract the vertex id number
+    id_first = vertex_msg.find(IDTAG) + len(IDTAG)        
+    id_last = vertex_msg.find(IDENDTAG)
+
+    vertex_id = int(vertex_msg[id_first:id_last])
+
+    # Extract the edge list that are connected to this vertex
+    edge_first = vertex_msg.find(EDGETAG) + len(EDGETAG)
+    edge_last = vertex_msg.find(EDGEENDTAG)
+
+    edge_str = vertex_msg[edge_first:edge_last]
+    edge_list = map(int, re.findall(r'\d+', edge_str))
+
+    # Extract the node list that contain the edges
+    node_first = vertex_msg.find(NODETAG) + len(NODETAG)
+    node_last = vertex_msg.find(NODEENDTAG)
+
+    node_str = vertex_msg[node_first:node_last]
+    node_list = map(int, re.findall(r'\d+', node_str))
+
+    return (vertex_id, edge_list, node_list) 
+
+
 def server():
     # start server
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -27,6 +77,16 @@ def server():
             print("Accepted connection from: " + str(client_address))
             sock = psocket(sock, blocking = True)
             data = sock.precv()
+            parsed_data = parse_vertex_info(data)
+            if parsed_data is not None:
+                vertex_id = parsed_data[0]
+                edge_list = parsed_data[1]
+                node_list = parsed_data[2]
+
+                print "vertex id: ", vertex_id
+                print "edge list: ", edge_list
+                print "node list: ", node_list
+
             print("Recv: " + data)
             sock.close()
         except:
@@ -71,7 +131,8 @@ def client():
                 print "Client: Connected!"
             
                 # send port number to master
-                msg = "Hello from Node: " + str(my_node)
+                msg = raw_input()
+                #msg = "Hello from Node: " + str(my_node)
                 sock.psend(msg)
                 sock.close()
                 break
