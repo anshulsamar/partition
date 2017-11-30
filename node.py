@@ -14,6 +14,7 @@ import pickle
 import threading
 import os
 import random
+import re
 
 
 def parse_vertex_info(vertex_msg):
@@ -39,7 +40,7 @@ def parse_vertex_info(vertex_msg):
        EDGEENDTAG not in vertex_msg or \
        NODETAG not in vertex_msg or \
        NODEENDTAG not in vertex_msg:
-         print "This message does not have all the tags"
+         print("This message does not have all the tags")
          return None
 
     # Extract the vertex id number
@@ -83,9 +84,9 @@ def server():
                 edge_list = parsed_data[1]
                 node_list = parsed_data[2]
 
-                print "vertex id: ", vertex_id
-                print "edge list: ", edge_list
-                print "node list: ", node_list
+                print("vertex id: " + str(vertex_id))
+                print("edge list: " + str(edge_list))
+                print("node list: " + str(node_list))
 
             print("Recv: " + data)
             sock.close()
