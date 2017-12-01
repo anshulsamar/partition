@@ -99,6 +99,16 @@ def create_nodes():
         config = [capacity, seq_no, port, nodes]
         pickle.dump(config, open(direct + "config.p",'wb'))
         pickle.dump(node_to_v[node], open(direct + "v_set.p",'wb'))
+
+        vertex_transfer_fn = "vertex_transfer_msg.p"
+        # create file for holding the vertex message transfer sender info
+        try:
+            vertex_transfer_sender = open(direct + vertex_transfer_fn, 'r')
+        except IOError:
+            vertex_transfer_sender = open(direct + vertex_transfer_fn, 'w')
+
+        vertex_transfer_sender.close()
+
         # select only vertices on this node
         v_to_v_s = {}
         for v in v_to_v:

@@ -17,6 +17,20 @@ import random
 import re
 import time
 
+
+VERTEXIDTAG = "<ID>"
+VERTEXIDENDTAG = "<\ID>"
+EDGETAG = "<EDGE>"
+EDGEENDTAG = "<\EDGE>"
+NODETAG = "<NODE>"
+NODEENDTAG = "<\NODE>"
+
+SENDERNODETAG = "<SENDERNODE>"
+SENDERNODEENDTAG = "<\SENDERNODE>"
+
+SEQNOTAG = "<SEQNO>"
+SEQNOENDTAG = "<\SEQNO>"
+
 def parse_vertex_info(vertex_msg):
     '''
     Parses a vertex message of the form:
@@ -26,26 +40,34 @@ def parse_vertex_info(vertex_msg):
     the vertex to that node
 
     '''
-    
-    IDTAG = "<ID>"
-    IDENDTAG = "<\ID>"
-    EDGETAG = "<EDGE>"
-    EDGEENDTAG = "<\EDGE>"
-    NODETAG = "<NODE>"
-    NODEENDTAG = "<\NODE>"
 
+    # Extract the sender node's id
+    sender_node_first = vertex_msg.find(SENDERNODETAG) + len(SENDERNODETAG)
+    sender_node_last = vertex_msg.find(SENDERNODEENDTAG)
+
+    sender_node = int(vertex_msg[sender_node_first:sender_node_last])
+
+    # Extract the sender node's message sequence number
+    seq_no_first = vertex_msg.find(SEQNOTAG) + len(SEQNOTAG)
+    seq_no_last = vertex_msg.find(SEQNOENDTAG)
+
+    seq_no = int(vertex_msg[seq_no_first:seq_no_last])
+
+    # Make sure that this vertex transfer message has all the tags
     if IDTAG not in vertex_msg or \
        IDENDTAG not in vertex_msg or \
        EDGETAG not in vertex_msg or \
        EDGEENDTAG not in vertex_msg or \
        NODETAG not in vertex_msg or \
        NODEENDTAG not in vertex_msg:
-         print("This message does not have all the tags")
+         print("This message from node " + str(sender_node) + \
+               " with sequence number " + str(seq_no) + \
+               " does not have all the tags")
          return None
 
     # Extract the vertex id number
-    id_first = vertex_msg.find(IDTAG) + len(IDTAG)        
-    id_last = vertex_msg.find(IDENDTAG)
+    id_first = vertex_msg.find(VERTEXIDTAG) + len(VERTEXIDTAG)        
+    id_last = vertex_msg.find(VERTEXIDENDTAG)
 
     vertex_id = int(vertex_msg[id_first:id_last])
 
@@ -63,10 +85,10 @@ def parse_vertex_info(vertex_msg):
     node_str = vertex_msg[node_first:node_last]
     node_list = map(int, re.findall(r'\d+', node_str))
 
-    return (vertex_id, edge_list, node_list) 
+    return (vertex_id, edge_list, node_list, sender_node, seq_no) 
 
 
-def server():
+def server(this_node_id):
     # start server
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('localhost', my_port))
@@ -84,10 +106,22 @@ def server():
                 vertex_id = parsed_data[0]
                 edge_list = parsed_data[1]
                 node_list = parsed_data[2]
+                sender_node = parsed_data[3]
+                seq_no = parsed_data[4]
 
                 print("vertex id: " + str(vertex_id))
                 print("edge list: " + str(edge_list))
                 print("node list: " + str(node_list))
+                print("sender node: " + str(sender_node))
+                print("seq no: " + str(seq_no))
+
+                # dump this metadata into vertex transfer msg file for
+                # the client side to read and send back an ack to the 
+                # sender node
+                direct = "node_" + str(this_node_id) + "/"
+                msg_meta = {"sender_node": sender_node, "seq_no": seq_no}
+                pickle.dump(msg_meta, open(direct + "vertex_transfer_msg.p", "a"))
+                
 
             print("Recv: " + data)
             sock.close()
@@ -111,13 +145,13 @@ def add_sender_id_tags(this_node_id, node_seq_no, msg):
     Adds node id and sequence number tags to the message
     '''
 
-    SENDERIDTAG = "<SENDERID>"
-    SENDERIDENDTAG = "<\SENDERID>"
+    SENDERNODETAG = "<SENDERID>"
+    SENDERNODEENDTAG = "<\SENDERID>"
 
     SEQNOTAG = "<SEQNO>"
     SEQNOENDTAG = "<\SEQNO>"
 
-    msg += SENDERIDTAG + str(this_node_id) + SENDERIDENDTAG
+    msg += SENDERNODETAG + str(this_node_id) + SENDERNODEENDTAG
     msg += SEQNOTAG + str(node_seq_no) + SEQNOENDTAG
 
     return msg
@@ -126,7 +160,9 @@ def client(this_node_id, node_seq_no, vertex_set):
     while True:
         # check to see if any vertex transfer messages received (we
         # can do this via vertex_transfer_msg.txt file)
-        
+        direct = "node_" + str(this_node_id) + "/"
+        msg_metadata = pickle.load(open(direct + "vertex_transfer_msg.p", "rb"))
+ 
 
         # need to make sure we have at least one vertex
         # to potentially transfer to another node
@@ -251,7 +287,7 @@ print_graph(direct + str(my_node))
 
 # start client threads
 print "Starting Server"
-server_t = threading.Thread(target=server)
+server_t = threading.Thread(target=server, args=(my_node,))
 server_t.daemon = True
 server_t.start()
 print "Starting Client"
