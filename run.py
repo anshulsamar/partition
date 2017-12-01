@@ -16,6 +16,10 @@ v_to_v = {}                             # vertex-vertex map
 edges = set()                           # edge_list
 capacity = {}                           # remaining capacity
 threshold = 0                           # partition thresh
+# NOTE: Added by naokieto
+# Maybe initial sequence number should be initialized to avoid seq num 0
+# attacks
+seq_no = 0                              # sequence number of message
 
 # Initialize nodes
 for i in nodes:
@@ -92,7 +96,7 @@ def create_nodes():
         if not os.path.exists(direct):
             os.makedirs(direct)
         port = 10000 + node
-        config = [capacity, port, nodes]
+        config = [capacity, seq_no, port, nodes]
         pickle.dump(config, open(direct + "config.p",'wb'))
         pickle.dump(node_to_v[node], open(direct + "v_set.p",'wb'))
         # select only vertices on this node

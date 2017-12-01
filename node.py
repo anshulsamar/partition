@@ -15,7 +15,7 @@ import threading
 import os
 import random
 import re
-
+import time
 
 def parse_vertex_info(vertex_msg):
     '''
@@ -78,6 +78,7 @@ def server():
             print("Accepted connection from: " + str(client_address))
             sock = psocket(sock, blocking = True)
             data = sock.precv()
+            # parse the vertex transfer message
             parsed_data = parse_vertex_info(data)
             if parsed_data is not None:
                 vertex_id = parsed_data[0]
@@ -105,41 +106,84 @@ def out_in (v):
             out_n.add(vi)
     return out_n, in_n
 
-def client():
-    while True:
-        v = random.choice(list(v_set))
-        print "Picked vertex: " + str(v)
-        # out and in neighbors
-        out_n, in_n = out_in(v)
-        # out edges by node
-        out_counts = {}
-        for n in nodes:
-            out_counts[n] = 0
-        for vi in out_n:
-            out_node = v_to_node[vi]
-            out_counts[out_node] = out_counts[out_node] + 1
-        best_node = max(out_counts.iterkeys(),
-                        key=lambda k: out_counts[k])
-        # diff is num_outedges - num_inedges
-        diff = out_counts[best_node] - len(in_n)
+def add_sender_id_tags(this_node_id, node_seq_no, msg):
+    '''
+    Adds node id and sequence number tags to the message
+    '''
 
-        if diff > 0 and capacity > 0:        
-            try:
-                # connects to node
-                print "Client: Attempting --> Node: " + str(best_node)
-                sock = psocket(blocking = True)
-                sock.pconnect('localhost', node_to_port[best_node])
-                print "Client: Connected!"
-            
-                # send port number to master
-                msg = raw_input()
-                #msg = "Hello from Node: " + str(my_node)
-                sock.psend(msg)
-                sock.close()
-                break
-            except:
-                sleep(1)
-                continue
+    SENDERIDTAG = "<SENDERID>"
+    SENDERIDENDTAG = "<\SENDERID>"
+
+    SEQNOTAG = "<SEQNO>"
+    SEQNOENDTAG = "<\SEQNO>"
+
+    msg += SENDERIDTAG + str(this_node_id) + SENDERIDENDTAG
+    msg += SEQNOTAG + str(node_seq_no) + SEQNOENDTAG
+
+    return msg
+
+def client(this_node_id, node_seq_no, vertex_set):
+    while True:
+        # check to see if any vertex transfer messages received (we
+        # can do this via vertex_transfer_msg.txt file)
+        
+
+        # need to make sure we have at least one vertex
+        # to potentially transfer to another node
+        if len(vertex_set) > 0:
+            v = random.choice(list(vertex_set))
+            print("Picked vertex: " + str(v))
+            # out and in neighbors
+            out_n, in_n = out_in(v)
+            # out edges by node
+            out_counts = {}
+            for n in nodes:
+                out_counts[n] = 0
+            for vi in out_n:
+                out_node = v_to_node[vi]
+                out_counts[out_node] = out_counts[out_node] + 1
+            best_node = max(out_counts.iterkeys(),
+                            key=lambda k: out_counts[k])
+            # diff is num_outedges - num_inedges
+            diff = out_counts[best_node] - len(in_n)
+
+            # NOTE: why check for capacity > 0? i thought maybe that was
+            # for the server side? - naokieto
+            if diff > 0:# and capacity > 0:        
+                try:
+                    # connects to node
+                    print("Client: Attempting --> Node: " + str(best_node))
+                    sock = psocket(blocking = True)
+                    sock.pconnect('localhost', node_to_port[best_node])
+                    print("Client: Connected!")
+                
+                    # send port number to master
+                    msg = raw_input()
+
+                    msg = add_sender_id_tags(msg) 
+
+                    print("Sending to port " + str(node_to_port[best_node]) + ": " + msg)
+
+                    #msg = "Hello from Node: " + str(my_node)
+                    time_str = time.strftime("%Y%m%d-%H%M%S")
+                    log_name = time_str + ".txt"
+
+                    vertex_transfer_file = open(log_name, "w")
+
+                    # write ahead logging
+                    vertex_transfer_file.write(msg)
+
+                    # TODO: have to test this to see what happens when the node fails during a middle of a log write
+                    # Also, should we do some ending character in the log file to know that its complete? otherwise
+                    # we have no idea if a log file is corrupt or not
+                    vertex_transfer_file.close()
+
+                    sock.psend(msg)
+                    sock.close()
+                    break
+                except:
+                    sleep(1)
+                    continue
 
 def redo_log():
     if not os.path.isfile(direct + 'log.txt'): return
@@ -186,9 +230,11 @@ if (len(sys.argv) < 2):
 my_node = int(sys.argv[1])
 direct = "node_" + str(my_node) + "/"
 config = pickle.load(open(direct + 'config.p','rb'))
-capacity = config[0]
-my_port = config[1]
-nodes = config[2]
+# amount of vertices that can be added to this node
+capacity_left = config[0]
+seq_no = config[1]
+my_port = config[2]
+nodes = config[3]
 
 # data structures for graph
 v_set = pickle.load(open(direct + 'v_set.p','rb'))
@@ -209,7 +255,7 @@ server_t = threading.Thread(target=server)
 server_t.daemon = True
 server_t.start()
 print "Starting Client"
-client_t = threading.Thread(target=client)
+client_t = threading.Thread(target=client, args=(my_node, v_set, seq_no))
 client_t.daemon = True
 client_t.start()
 
