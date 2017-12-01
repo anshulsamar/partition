@@ -121,15 +121,25 @@ def server(this_node_id):
                 # amount of vertices that can be added to this node
                 capacity_left = config[0]
                 seq_no = config[1]
-                my_port = config[2]
+                this_port = config[2]
                 nodes = config[3]
 
                 # if capacity at this node is not full
                 if capacity_left > 0:
                     new_capacity_left = capacity_left - 1
                     new_seq_no = seq_no + 1
-                    new_config = [new_capacity_left, new_seq_no, my_port, nodes]
-                    pickle.dump(new_config, open(direct + "config.p", 'wb'))               
+                    new_config = [new_capacity_left, new_seq_no, this_port, nodes]
+                    pickle.dump(new_config, open(direct + "config.p", 'wb'))
+
+                    # need to update
+                    #v_set = pickle.load(open(direct + 'v_set.p','rb'))
+                    #v_to_v = pickle.load(open(direct + 'v_to_v.p','rb'))
+                    #v_to_node = pickle.load(open(direct + 'v_to_node.p','rb'))
+
+                    v_set.add(vertex_id)
+                    pickle.dump(v_set, open(direct + 'v_set.p', 'w'))
+
+                    #v_to_v =                                 
  
                 # dump this metadata into vertex transfer msg file for
                 # the client side to read and send back an ack to the 
@@ -172,20 +182,22 @@ def add_sender_id_tags(this_node_id, node_seq_no, msg):
 
     return msg
 
-def client(this_node_id, node_seq_no, vertex_set):
+def client(this_node_id, vertex_set, node_seq_no):
+    print("vertex_set: ", vertex_set)
     while True:
         # check to see if any vertex transfer messages received (we
         # can do this via vertex_transfer_msg.txt file)
         direct = "node_" + str(this_node_id) + "/"
         msg_metadata = pickle.load(open(direct + "vertex_transfer_msg.p", "rb"))
-        sender_node = msg_metadata["sender_node"]
-        seq_no = msg_metadata["seq_no"]
-        # TODO: make sure that the type of this is int
-        # perhaps use "type(..)"
+        if msg_metadata is not None:
+            sender_node = msg_metadata["sender_node"]
+            seq_no = msg_metadata["seq_no"]
+            # TODO: make sure that the type of this is int
+            # perhaps use "type(..)"
 
-        print("Client: Attempting Ack --> Node: " + str(sender_node))
-        sock = psocket(blocking = True)
-        sock.pconnect('localhost', node_to_port[sender_node])
+            print("Client: Attempting Ack --> Node: " + str(sender_node))
+            sock = psocket(blocking = True)
+            sock.pconnect('localhost', node_to_port[sender_node])
         
 
         # need to make sure we have at least one vertex
@@ -280,6 +292,8 @@ def print_graph (fname):
 def print_data_structures():
     print "Vertex Set:"
     print(v_set)
+    print "Vertex to Vertex:"
+    print(v_to_v)
     print "Vertex to Node"
     print(v_to_node)
     
