@@ -16,7 +16,7 @@ import os
 import random
 import re
 import time
-
+import ast
 
 VERTEXIDTAG = "<ID>"
 VERTEXIDENDTAG = "<\ID>"
@@ -72,11 +72,14 @@ def parse_vertex_info(vertex_msg):
     vertex_id = int(vertex_msg[id_first:id_last])
 
     # Extract the edge list that are connected to this vertex
+    # Note that an edge is of the form v2 since we know
+    # the other vertex (vertex_id)
     edge_first = vertex_msg.find(EDGETAG) + len(EDGETAG)
     edge_last = vertex_msg.find(EDGEENDTAG)
 
     edge_str = vertex_msg[edge_first:edge_last]
     edge_list = map(int, re.findall(r'\d+', edge_str))
+    #edge_list = list(ast.literal_eval(edge_str))
 
     # Extract the node list that contain the edges
     node_first = vertex_msg.find(NODETAG) + len(NODETAG)
@@ -166,10 +169,23 @@ def out_in (v):
             out_n.add(vi)
     return out_n, in_n
 
-def add_sender_id_tags(this_node_id, node_seq_no, msg):
+def make_sender_id_tags(vertex_to_send, vertex_vertices, vertices_to_nodes, this_node_id, node_seq_no):
     '''
+    
     Adds node id and sequence number tags to the message
     '''
+
+    msg = VERTEXIDTAG
+    msg += str(vertex_to_send)
+    msg += VERTEXIDENDTAG
+
+    msg += EDGETAG
+    msg += str(vertex_vertices)
+    msg += EDGEENDTAG
+
+    msg += NODETAG
+    msg += str(vertices_to_nodes)
+    msg += NODEENDTAG
 
     SENDERNODETAG = "<SENDERID>"
     SENDERNODEENDTAG = "<\SENDERID>"
@@ -182,7 +198,7 @@ def add_sender_id_tags(this_node_id, node_seq_no, msg):
 
     return msg
 
-def client(this_node_id, vertex_set, node_seq_no):
+def client(this_node_id, vertex_set, node_seq_no, nodes):
     print("vertex_set: ", vertex_set)
     while True:
         # check to see if any vertex transfer messages received (we
@@ -229,10 +245,17 @@ def client(this_node_id, vertex_set, node_seq_no):
                     sock.pconnect('localhost', node_to_port[best_node])
                     print("Client: Connected!")
                 
-                    # send port number to master
-                    msg = raw_input()
+                    edges = v_to_v[v]
 
-                    msg = add_sender_id_tags(msg) 
+                    vertices_nodes = {}
+
+                    for v2 in edges:
+                        vertices_nodes[v2] = v_to_node[v2]
+
+                    # send port number to master
+                    #msg = raw_input()
+
+                    msg = make_sender_id_tags(v, edges, vertices_nodes, this_node_id, node_seq_no) 
 
                     print("Sending to port " + str(node_to_port[best_node]) + ": " + msg)
 
@@ -329,7 +352,7 @@ server_t = threading.Thread(target=server, args=(my_node,))
 server_t.daemon = True
 server_t.start()
 print "Starting Client"
-client_t = threading.Thread(target=client, args=(my_node, v_set, seq_no))
+client_t = threading.Thread(target=client, args=(my_node, v_set, seq_no, nodes))
 client_t.daemon = True
 client_t.start()
 

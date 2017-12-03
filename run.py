@@ -102,11 +102,10 @@ def create_nodes():
 
         vertex_transfer_fn = "vertex_transfer_msg.p"
         # create file for holding the vertex message transfer sender info
-        try:
-            vertex_transfer_sender = open(direct + vertex_transfer_fn, 'r')
-        except IOError:
-            vertex_transfer_sender = open(direct + vertex_transfer_fn, 'w')
+        # maybe pickle dump None to the file
+        vertex_transfer_sender = open(direct + vertex_transfer_fn, 'wb')
 
+        pickle.dump(None, vertex_transfer_sender)
         vertex_transfer_sender.close()
 
         # select only vertices on this node
