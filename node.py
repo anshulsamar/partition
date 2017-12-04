@@ -19,6 +19,7 @@ import time
 import ast
 import copy
 import datetime
+import numpy as np
 
 VERTEXIDTAG = "<ID>"
 VERTEXIDENDTAG = "<\ID>"
@@ -233,9 +234,19 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
             #sock = psocket(blocking = True)
             #sock.pconnect('localhost', node_to_port[sender_node])
         
-        # check vertex_transit.p local file to see if any of the transactions have timed out
+        # check every file in the txn_logs directory to see if any of the 
+        # transactions have timed out
         # timeout is 10 seconds
-
+        txn_dir = direct + "txn_logs/"
+        if os.path.exists(os.getcwd() + "/" + txn_dir):
+            for filename in os.listdir(os.getcwd() + "/" + txn_dir):
+                print("txn_dir filename: " + txn_dir + filename)
+                #fname = open(txn_dir + filename, "rb")
+                #txn = pickle.load(fname)
+                #fname.close()
+                txn = np.load(txn_dir + filename)
+                print("txn for file " + str(filename) + " : " + str(txn))
+                #print("filename!!!: " + str(filename))
         
 
         # need to make sure we have at least one vertex
@@ -304,8 +315,8 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
                     # Remove the vertex from the node vertex list so that it's not chosen again
                     vertex_set.remove(v)
 
+                    print("new vertex set: " + str(vertex_set))
                     sock.psend(msg)
-                    sock.close()
 
                     print("dafuqqqqqqqqqqqqqqqqqqqqqqqqqq")
                     # Add this transaction to the log file
@@ -315,16 +326,21 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
                         os.makedirs(txn_dir)
                     #time_str = time.strftime("%Y%m%d-%H%M%S")
                     #log_name = time_str + ".p"
-                    log_name = str(node_seq_no) + ".p"
-                    vertex_transit_file = open(txn_dir + log_name, "wb")
+                    log_name = str(node_seq_no) + ".npy"
+                    #vertex_transit_file = open(txn_dir + log_name, "wb")
                     msg_dict = {"vertex": v, "edges": edges, \
                                 "vertices_nodes": vertices_nodes, "this_node_id": this_node_id, \
                                 "node_seq_no": node_seq_no, "ts": datetime.datetime.now()}
                     #vertex_transit_file.write(msg_dict)
-                    pickle.dump(msg_dict, vertex_transit_file)
-                    vertex_transit_file.close()
+                    #pickle.dump(msg_dict, vertex_transit_file)
+                    
+                    #vertex_transit_file.close()
+                    np.save(txn_dir + log_name, msg_dict)
+
+                    sock.close()
                     break
                 except:
+                    print("exception!!!!!!")
                     sleep(1)
                     continue
 
