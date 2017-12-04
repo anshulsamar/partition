@@ -17,6 +17,8 @@ import random
 import re
 import time
 import ast
+import copy
+import datetime
 
 VERTEXIDTAG = "<ID>"
 VERTEXIDENDTAG = "<\ID>"
@@ -41,29 +43,17 @@ def parse_vertex_info(vertex_msg):
 
     '''
 
-    # Extract the sender node's id
-    sender_node_first = vertex_msg.find(SENDERNODETAG) + len(SENDERNODETAG)
-    sender_node_last = vertex_msg.find(SENDERNODEENDTAG)
-
-    sender_node = int(vertex_msg[sender_node_first:sender_node_last])
-
-    # Extract the sender node's message sequence number
-    seq_no_first = vertex_msg.find(SEQNOTAG) + len(SEQNOTAG)
-    seq_no_last = vertex_msg.find(SEQNOENDTAG)
-
-    seq_no = int(vertex_msg[seq_no_first:seq_no_last])
-
     # Make sure that this vertex transfer message has all the tags
-    if IDTAG not in vertex_msg or \
-       IDENDTAG not in vertex_msg or \
-       EDGETAG not in vertex_msg or \
-       EDGEENDTAG not in vertex_msg or \
-       NODETAG not in vertex_msg or \
-       NODEENDTAG not in vertex_msg:
-         print("This message from node " + str(sender_node) + \
-               " with sequence number " + str(seq_no) + \
-               " does not have all the tags")
-         return None
+    #if IDTAG not in vertex_msg or \
+    #   IDENDTAG not in vertex_msg or \
+    #   EDGETAG not in vertex_msg or \
+    #   EDGEENDTAG not in vertex_msg or \
+    #   NODETAG not in vertex_msg or \
+    #   NODEENDTAG not in vertex_msg:
+    #     print("This message from node " + str(sender_node) + \
+    #           " with sequence number " + str(seq_no) + \
+    #           " does not have all the tags")
+    #     return None
 
     # Extract the vertex id number
     id_first = vertex_msg.find(VERTEXIDTAG) + len(VERTEXIDTAG)        
@@ -78,7 +68,8 @@ def parse_vertex_info(vertex_msg):
     edge_last = vertex_msg.find(EDGEENDTAG)
 
     edge_str = vertex_msg[edge_first:edge_last]
-    edge_list = map(int, re.findall(r'\d+', edge_str))
+    edge_list = set(ast.literal_eval(edge_str))
+    #edge_list = map(int, re.findall(r'\d+', edge_str))
     #edge_list = list(ast.literal_eval(edge_str))
 
     # Extract the node list that contain the edges
@@ -86,12 +77,26 @@ def parse_vertex_info(vertex_msg):
     node_last = vertex_msg.find(NODEENDTAG)
 
     node_str = vertex_msg[node_first:node_last]
-    node_list = map(int, re.findall(r'\d+', node_str))
+    # https://stackoverflow.com/questions/13675942/converting-string-to-dict
+    node_list = ast.literal_eval(node_str)
+    #node_list = map(int, re.findall(r'\d+', node_str))
+
+    # Extract the sender node's id
+    sender_node_first = vertex_msg.find(SENDERNODETAG) + len(SENDERNODETAG)
+    sender_node_last = vertex_msg.find(SENDERNODEENDTAG)
+
+    sender_node = int(vertex_msg[sender_node_first:sender_node_last])
+
+    # Extract the sender node's message sequence number
+    seq_no_first = vertex_msg.find(SEQNOTAG) + len(SEQNOTAG)
+    seq_no_last = vertex_msg.find(SEQNOENDTAG)
+
+    seq_no = int(vertex_msg[seq_no_first:seq_no_last])
 
     return (vertex_id, edge_list, node_list, sender_node, seq_no) 
 
 
-def server(this_node_id):
+def server(this_node_id, vertex_set, edge_set, node_set):
     # start server
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('localhost', my_port))
@@ -127,11 +132,13 @@ def server(this_node_id):
                 this_port = config[2]
                 nodes = config[3]
 
+                print("capacity_left: " + str(capacity_left))
                 # if capacity at this node is not full
-                if capacity_left > 0:
-                    new_capacity_left = capacity_left - 1
-                    new_seq_no = seq_no + 1
-                    new_config = [new_capacity_left, new_seq_no, this_port, nodes]
+                if capacity_left[this_node_id] > 0:
+                    new_capacity_left = copy.deepcopy(capacity_left)
+                    new_capacity_left[this_node_id] = capacity_left[this_node_id] - 1
+                    #new_seq_no = seq_no + 1
+                    new_config = [new_capacity_left, seq_no, this_port, nodes]
                     pickle.dump(new_config, open(direct + "config.p", 'wb'))
 
                     # need to update
@@ -139,10 +146,22 @@ def server(this_node_id):
                     #v_to_v = pickle.load(open(direct + 'v_to_v.p','rb'))
                     #v_to_node = pickle.load(open(direct + 'v_to_node.p','rb'))
 
-                    v_set.add(vertex_id)
-                    pickle.dump(v_set, open(direct + 'v_set.p', 'w'))
+                    # Add vertex to the vertex set
+                    vertex_set.add(vertex_id)
+                    print("new vertex set: " + str(vertex_set))
+                    pickle.dump(vertex_set, open(direct + 'v_set.p', 'wb'))
 
-                    #v_to_v =                                 
+                    # Add edge to edge set
+                    edge_set[vertex_id] = edge_list
+                    print("new edge list: " + str(edge_set))
+                    pickle.dump(edge_set, open(direct + 'v_to_v.p', 'wb'))
+
+                    # Add node to node set
+                    for v in node_list:
+                        node_set[v] = node_list[v] 
+                    node_set[vertex_id] = this_node_id
+                    print("new node list: " + str(node_set))
+                    pickle.dump(node_set, open(direct + 'v_to_node.p', 'wb'))
  
                 # dump this metadata into vertex transfer msg file for
                 # the client side to read and send back an ack to the 
@@ -162,6 +181,8 @@ def out_in (v):
     node = v_to_node[v]
     out_n = set()
     in_n = set()
+    #print("v_to_v: " + str(v_to_v))
+    #print("v_to_v for " + str(v) + ": " + str(v_to_v[v]))
     for vi in v_to_v[v]:
         if v_to_node[vi] == node:
             in_n.add(vi)
@@ -171,7 +192,8 @@ def out_in (v):
 
 def make_sender_id_tags(vertex_to_send, vertex_vertices, vertices_to_nodes, this_node_id, node_seq_no):
     '''
-    
+    Adds vertex id, vertices connected to this vertex (edges), and nodes that those vertices are at tags
+    Note that vertex_vertices is of type list, not set 
     Adds node id and sequence number tags to the message
     '''
 
@@ -187,40 +209,40 @@ def make_sender_id_tags(vertex_to_send, vertex_vertices, vertices_to_nodes, this
     msg += str(vertices_to_nodes)
     msg += NODEENDTAG
 
-    SENDERNODETAG = "<SENDERID>"
-    SENDERNODEENDTAG = "<\SENDERID>"
-
-    SEQNOTAG = "<SEQNO>"
-    SEQNOENDTAG = "<\SEQNO>"
-
     msg += SENDERNODETAG + str(this_node_id) + SENDERNODEENDTAG
     msg += SEQNOTAG + str(node_seq_no) + SEQNOENDTAG
 
     return msg
 
-def client(this_node_id, vertex_set, node_seq_no, nodes):
+def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_port):
     print("vertex_set: ", vertex_set)
     while True:
         # check to see if any vertex transfer messages received (we
         # can do this via vertex_transfer_msg.txt file)
         direct = "node_" + str(this_node_id) + "/"
         msg_metadata = pickle.load(open(direct + "vertex_transfer_msg.p", "rb"))
+        #print("did this work?????????: " + str(msg_metadata))
         if msg_metadata is not None:
+            print("msg_metadata bammmmmmmmmmmmmmmmmmmm: " )
             sender_node = msg_metadata["sender_node"]
             seq_no = msg_metadata["seq_no"]
             # TODO: make sure that the type of this is int
             # perhaps use "type(..)"
 
             print("Client: Attempting Ack --> Node: " + str(sender_node))
-            sock = psocket(blocking = True)
-            sock.pconnect('localhost', node_to_port[sender_node])
+            #sock = psocket(blocking = True)
+            #sock.pconnect('localhost', node_to_port[sender_node])
+        
+        # check vertex_transit.p local file to see if any of the transactions have timed out
+        # timeout is 10 seconds
+
         
 
         # need to make sure we have at least one vertex
         # to potentially transfer to another node
         if len(vertex_set) > 0:
             v = random.choice(list(vertex_set))
-            print("Picked vertex: " + str(v))
+            #print("Picked vertex: " + str(v))
             # out and in neighbors
             out_n, in_n = out_in(v)
             # out edges by node
@@ -245,7 +267,7 @@ def client(this_node_id, vertex_set, node_seq_no, nodes):
                     sock.pconnect('localhost', node_to_port[best_node])
                     print("Client: Connected!")
                 
-                    edges = v_to_v[v]
+                    edges = list(v_to_v[v])
 
                     vertices_nodes = {}
 
@@ -255,26 +277,52 @@ def client(this_node_id, vertex_set, node_seq_no, nodes):
                     # send port number to master
                     #msg = raw_input()
 
+                    node_seq_no += 1
+                    new_config = [capacity_left, node_seq_no, this_port, nodes]
+                    pickle.dump(new_config, open(direct + "config.p", 'wb'))
+
                     msg = make_sender_id_tags(v, edges, vertices_nodes, this_node_id, node_seq_no) 
 
                     print("Sending to port " + str(node_to_port[best_node]) + ": " + msg)
 
                     #msg = "Hello from Node: " + str(my_node)
-                    time_str = time.strftime("%Y%m%d-%H%M%S")
-                    log_name = time_str + ".txt"
+                    #time_str = time.strftime("%Y%m%d-%H%M%S")
+                    #log_name = time_str + ".txt"
 
-                    vertex_transfer_file = open(log_name, "w")
+                    #vertex_transfer_file = open(log_name, "w")
 
                     # write ahead logging
-                    vertex_transfer_file.write(msg)
+                    #vertex_transfer_file.write(msg)
 
                     # TODO: have to test this to see what happens when the node fails during a middle of a log write
                     # Also, should we do some ending character in the log file to know that its complete? otherwise
                     # we have no idea if a log file is corrupt or not
-                    vertex_transfer_file.close()
+                    #vertex_transfer_file.close()
+                    
+                    print("vertex set old: " + str(vertex_set))
+                    print("v: " + str(v))
+                    # Remove the vertex from the node vertex list so that it's not chosen again
+                    vertex_set.remove(v)
 
                     sock.psend(msg)
                     sock.close()
+
+                    print("dafuqqqqqqqqqqqqqqqqqqqqqqqqqq")
+                    # Add this transaction to the log file
+
+                    txn_dir = direct + "txn_logs/"
+                    if not os.path.exists(txn_dir):
+                        os.makedirs(txn_dir)
+                    #time_str = time.strftime("%Y%m%d-%H%M%S")
+                    #log_name = time_str + ".p"
+                    log_name = str(node_seq_no) + ".p"
+                    vertex_transit_file = open(txn_dir + log_name, "wb")
+                    msg_dict = {"vertex": v, "edges": edges, \
+                                "vertices_nodes": vertices_nodes, "this_node_id": this_node_id, \
+                                "node_seq_no": node_seq_no, "ts": datetime.datetime.now()}
+                    #vertex_transit_file.write(msg_dict)
+                    pickle.dump(msg_dict, vertex_transit_file)
+                    vertex_transit_file.close()
                     break
                 except:
                     sleep(1)
@@ -348,11 +396,11 @@ print_graph(direct + str(my_node))
 
 # start client threads
 print "Starting Server"
-server_t = threading.Thread(target=server, args=(my_node,))
+server_t = threading.Thread(target=server, args=(my_node, v_set, v_to_v, v_to_node))
 server_t.daemon = True
 server_t.start()
 print "Starting Client"
-client_t = threading.Thread(target=client, args=(my_node, v_set, seq_no, nodes))
+client_t = threading.Thread(target=client, args=(my_node, v_set, seq_no, nodes, capacity_left, my_port))
 client_t.daemon = True
 client_t.start()
 
