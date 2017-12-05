@@ -244,11 +244,16 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
                 #fname = open(txn_dir + filename, "rb")
                 #txn = pickle.load(fname)
                 #fname.close()
-                txn = np.load(txn_dir + filename)
+                txn = np.load(txn_dir + filename).item()
                 print("txn for file " + str(filename) + " : " + str(txn))
                 #print("filename!!!: " + str(filename))
-        
-
+                now_ts = datetime.datetime.now()
+                print("the keys are: " + str(txn.keys()))
+                delta = now_ts - txn["ts"]
+                print("delta is: " + str(delta.total_seconds()))
+                if delta.total_seconds() > 10:
+                    os.remove(txn_dir + filename)
+       
         # need to make sure we have at least one vertex
         # to potentially transfer to another node
         if len(vertex_set) > 0:
