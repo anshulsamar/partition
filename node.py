@@ -97,7 +97,7 @@ def parse_vertex_info(vertex_msg):
     return (vertex_id, edge_list, node_list, sender_node, seq_no) 
 
 
-def server(this_node_id, vertex_set, edge_set, node_set):
+def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
     # start server
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('localhost', my_port))
@@ -167,12 +167,18 @@ def server(this_node_id, vertex_set, edge_set, node_set):
                     pickle.dump(node_set, open(direct + 'v_to_node.p', 'wb'))
                     accepted = True
  
+                ack_no[this_node_id] += 1
+                # write to config
+                # might have to use numpy instead of pickle
+
                 # dump this metadata into vertex transfer msg file for
                 # the client side to read and send back an ack to the 
                 # sender node
                 direct = "node_" + str(this_node_id) + "/"
                 msg_meta = {"sender_node": sender_node, "seq_no": seq_no, "accepted": accepted}
-                pickle.dump(msg_meta, open(direct + "vertex_transfer_msg.p", "a"))
+                #pickle.dump(msg_meta, open(direct + "vertex_transfer_msg.p", "a"))
+                np.save(msg_meta, direct + "vertex_transfer_msg.npy")
+                
                 
 
             print("Recv: " + data)
@@ -289,7 +295,7 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
                     for v2 in edges:
                         vertices_nodes[v2] = v_to_node[v2]
 
-                    node_seq_no += 1
+                    node_seq_no[this_node_id] += 1
                     new_config = [capacity_left, node_seq_no, this_port, nodes]
                     pickle.dump(new_config, open(direct + "config.p", 'wb'))
 
@@ -319,7 +325,7 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
                         os.makedirs(txn_dir)
                     #time_str = time.strftime("%Y%m%d-%H%M%S")
                     #log_name = time_str + ".p"
-                    log_name = str(node_seq_no) + ".npy"
+                    log_name = str(this_node_id) + "-" + str(node_seq_no[this_node_id]) + ".npy"
                     #vertex_transit_file = open(txn_dir + log_name, "wb")
                     msg_dict = {"vertex": v, "edges": edges, \
                                 "vertices_nodes": vertices_nodes, "this_node_id": this_node_id, \
@@ -389,6 +395,7 @@ capacity_left = config[0]
 seq_no = config[1]
 my_port = config[2]
 nodes = config[3]
+ack_no = config[4]
 
 # data structures for graph
 v_set = pickle.load(open(direct + 'v_set.p','rb'))
@@ -405,7 +412,7 @@ print_graph(direct + str(my_node))
 
 # start client threads
 print "Starting Server"
-server_t = threading.Thread(target=server, args=(my_node, v_set, v_to_v, v_to_node))
+server_t = threading.Thread(target=server, args=(my_node, v_set, v_to_v, v_to_node, ack_no))
 server_t.daemon = True
 server_t.start()
 print "Starting Client"

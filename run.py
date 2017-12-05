@@ -19,7 +19,8 @@ threshold = 0                           # partition thresh
 # NOTE: Added by naokieto
 # Maybe initial sequence number should be initialized to avoid seq num 0
 # attacks
-seq_no = 0                              # sequence number of message
+seq_no = [0] * 5                        # sequence number of message
+ack_no = [0] * 5                        # acknowledgement number
 
 # Initialize nodes
 for i in nodes:
@@ -96,7 +97,7 @@ def create_nodes():
         if not os.path.exists(direct):
             os.makedirs(direct)
         port = 10000 + node
-        config = [capacity, seq_no, port, nodes]
+        config = [capacity, seq_no, port, nodes, ack_no]
         pickle.dump(config, open(direct + "config.p",'wb'))
         pickle.dump(node_to_v[node], open(direct + "v_set.p",'wb'))
 
