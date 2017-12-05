@@ -34,6 +34,12 @@ SENDERNODEENDTAG = "<\SENDERNODE>"
 SEQNOTAG = "<SEQNO>"
 SEQNOENDTAG = "<\SEQNO>"
 
+ACCEPTTAG = "<ACCEPT>"
+ACCEPTENDTAG = "<\ACCEPT>"
+
+RECVRNODETAG = "<RECVRNODE>"
+RECVRNODEENDTAG = "<\RECVRNODE>"
+
 def parse_vertex_info(vertex_msg):
     '''
     Parses a vertex message of the form:
@@ -97,6 +103,8 @@ def parse_vertex_info(vertex_msg):
 
     return (vertex_id, edge_list, node_list, sender_node, seq_no) 
 
+def parse_ack(ack_msg):
+    return
 
 def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
     # start server
@@ -182,13 +190,9 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                 if not os.path.exists(ack_dir):
                     os.makedirs(ack_dir)
                 msg_fname = str(this_node_id) + "-" + str(ack_no[this_node_id]) + ".npy"
-                print("msg_fname: " + msg_fname)
                 msg_meta = {"sender_node": sender_node, "seq_no": seq_no, "accepted": accepted}
-                print("msg_meta: " + str(msg_meta))
                 #pickle.dump(msg_meta, open(direct + "vertex_transfer_msg.p", "a"))
                 np.save(ack_dir + msg_fname, msg_meta)
-                
-                
 
             print("Recv: " + data)
             sock.close()
@@ -233,6 +237,16 @@ def make_sender_id_tags(vertex_to_send, vertex_vertices, vertices_to_nodes, this
 
     return msg
 
+def make_ack_msg(accepted, seq_no, node_id):
+    msg = ACCEPTTAG
+    msg += str(accepted)
+    msg += ACCEPTENDTAG
+
+    msg += SEQNOTAG + str(node_seq_no) + SEQNOENDTAG
+    msg += RECVRNODETAG + str(node_id) + RECVRNODEENDTAG
+
+    return msg
+
 def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_port):
     print("vertex_set: ", vertex_set)
     while True:
@@ -244,18 +258,25 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
         if os.path.exists(ack_dir):
             for filename in os.listdir(ack_dir):
                 msg_metadata = np.load(ack_dir + filename).item()
-                #msg_metadata = pickle.load(open(direct + "vertex_transfer_msg.p", "rb"))
-                #print("did this work?????????: " + str(msg_metadata))
                 #if msg_metadata is not None:
-                print("msg_metadata bammmmmmmmmmmmmmmmmmmm: " + str(msg_metadata))
+                #print("msg_metadata bammmmmmmmmmmmmmmmmmmm: " + str(msg_metadata))
                 sender_node = msg_metadata["sender_node"]
                 seq_no = msg_metadata["seq_no"]
+                accepted = msg_metadata["accepted"]
                 # TODO: make sure that the type of this is int
                 # perhaps use "type(..)"
 
                 print("Client: Attempting Ack --> Node: " + str(sender_node))
-                #sock = psocket(blocking = True)
-                #sock.pconnect('localhost', node_to_port[sender_node])
+                sock = psocket(blocking = True)
+                sock.pconnect('localhost', node_to_port[sender_node])
+                #ack_data = {"accepted": accepted, "seq_no": seq_no, "receiver_node": this_node_id}
+                ack_msg = make_ack_msg(accepted, seq_no, this_node_id)
+
+                
+                sock.psend(msg)
+                sock.close()
+
+                
         
         # check every file in the txn_logs directory to see if any of the 
         # transactions have timed out
