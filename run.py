@@ -4,6 +4,7 @@ from graphviz import Graph
 import sys
 import pickle
 import os
+import shutil
 
 # Redundant data structures for easy access
 N = 5                                   # max nodes
@@ -125,6 +126,18 @@ def create_nodes():
                     v_to_node_s[vi] = v_to_node[vi]
         pickle.dump(v_to_node_s, open(direct + "v_to_node.p",'wb'))
         pickle.dump(node_to_port, open(direct + "node_to_port.p",'wb'))
+
+def clean_dirs():
+    for node in nodes:
+        direct = "node_" + str(node) + "/"
+        if os.path.exists(direct):
+            txn_dir = direct + "txn_logs/"
+            ack_dir = direct + "ack_msg/"
+            if os.path.exists(txn_dir):
+                shutil.rmtree(txn_dir)
+            if os.path.exists(ack_dir):
+                shutil.rmtree(ack_dir)
+
 if (len(sys.argv) < 2):
     print("USAGE: python run.py [#nodes] [capacity] [file1] [file2]")
     exit()
@@ -133,3 +146,4 @@ read_vertices(sys.argv[3])
 read_edges(sys.argv[4])
 print_graph('starting_config')
 create_nodes()
+clean_dirs()

@@ -92,7 +92,8 @@ def parse_vertex_info(vertex_msg):
     seq_no_first = vertex_msg.find(SEQNOTAG) + len(SEQNOTAG)
     seq_no_last = vertex_msg.find(SEQNOENDTAG)
 
-    seq_no = int(vertex_msg[seq_no_first:seq_no_last])
+    seq_no_str = vertex_msg[seq_no_first:seq_no_last]
+    seq_no = list(ast.literal_eval(seq_no_str)) #int(vertex_msg[seq_no_first:seq_no_last])
 
     return (vertex_id, edge_list, node_list, sender_node, seq_no) 
 
@@ -109,6 +110,7 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
             print("Accepted connection from: " + str(client_address))
             sock = psocket(sock, blocking = True)
             data = sock.precv()
+            print("data: " + data)
             # parse the vertex transfer message
             parsed_data = parse_vertex_info(data)
             if parsed_data is not None:
@@ -175,9 +177,14 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                 # the client side to read and send back an ack to the 
                 # sender node
                 direct = "node_" + str(this_node_id) + "/"
+                ack_dir = direct + "ack_msg/"
+
+                if not os.path.exists(ack_dir):
+                    os.makedirs(ack_dir)
+                msg_fname = str(this_node_id) + "-" + str(ack_no[this_node_id]) + ".npy"
                 msg_meta = {"sender_node": sender_node, "seq_no": seq_no, "accepted": accepted}
                 #pickle.dump(msg_meta, open(direct + "vertex_transfer_msg.p", "a"))
-                np.save(msg_meta, direct + "vertex_transfer_msg.npy")
+                np.save(msg_meta, ack_dir + msg_fname)
                 
                 
 
@@ -230,18 +237,23 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
         # check to see if any vertex transfer messages received (we
         # can do this via vertex_transfer_msg.txt file)
         direct = "node_" + str(this_node_id) + "/"
-        msg_metadata = pickle.load(open(direct + "vertex_transfer_msg.p", "rb"))
-        #print("did this work?????????: " + str(msg_metadata))
-        if msg_metadata is not None:
-            print("msg_metadata bammmmmmmmmmmmmmmmmmmm: " )
-            sender_node = msg_metadata["sender_node"]
-            seq_no = msg_metadata["seq_no"]
-            # TODO: make sure that the type of this is int
-            # perhaps use "type(..)"
+        ack_dir = direct + "ack_msg/"
 
-            print("Client: Attempting Ack --> Node: " + str(sender_node))
-            #sock = psocket(blocking = True)
-            #sock.pconnect('localhost', node_to_port[sender_node])
+        if os.path.exists(ack_dir):
+            for filename in os.listdir(ack_dir):
+                msg_metadata = np.load(ack_dir + filename).item()
+                #msg_metadata = pickle.load(open(direct + "vertex_transfer_msg.p", "rb"))
+                #print("did this work?????????: " + str(msg_metadata))
+                #if msg_metadata is not None:
+                print("msg_metadata bammmmmmmmmmmmmmmmmmmm: " + str(msg_metadata))
+                sender_node = msg_metadata["sender_node"]
+                seq_no = msg_metadata["seq_no"]
+                # TODO: make sure that the type of this is int
+                # perhaps use "type(..)"
+
+                print("Client: Attempting Ack --> Node: " + str(sender_node))
+                #sock = psocket(blocking = True)
+                #sock.pconnect('localhost', node_to_port[sender_node])
         
         # check every file in the txn_logs directory to see if any of the 
         # transactions have timed out
@@ -263,7 +275,7 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
         # to potentially transfer to another node
         if len(vertex_set) > 0:
             v = random.choice(list(vertex_set))
-            #print("Picked vertex: " + str(v))
+            #print("Picked vertex: " + str(v) + " out of " + str(vertex_set))
             # out and in neighbors
             out_n, in_n = out_in(v)
             # out edges by node
