@@ -182,9 +182,11 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                 if not os.path.exists(ack_dir):
                     os.makedirs(ack_dir)
                 msg_fname = str(this_node_id) + "-" + str(ack_no[this_node_id]) + ".npy"
+                print("msg_fname: " + msg_fname)
                 msg_meta = {"sender_node": sender_node, "seq_no": seq_no, "accepted": accepted}
+                print("msg_meta: " + str(msg_meta))
                 #pickle.dump(msg_meta, open(direct + "vertex_transfer_msg.p", "a"))
-                np.save(msg_meta, ack_dir + msg_fname)
+                np.save(ack_dir + msg_fname, msg_meta)
                 
                 
 
