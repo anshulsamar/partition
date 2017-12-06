@@ -51,16 +51,20 @@ def parse_vertex_info(vertex_msg):
     '''
 
     # Make sure that this vertex transfer message has all the tags
-    #if IDTAG not in vertex_msg or \
-    #   IDENDTAG not in vertex_msg or \
-    #   EDGETAG not in vertex_msg or \
-    #   EDGEENDTAG not in vertex_msg or \
-    #   NODETAG not in vertex_msg or \
-    #   NODEENDTAG not in vertex_msg:
-    #     print("This message from node " + str(sender_node) + \
-    #           " with sequence number " + str(seq_no) + \
-    #           " does not have all the tags")
-    #     return None
+    if VERTEXIDTAG not in vertex_msg or \
+       VERTEXIDENDTAG not in vertex_msg or \
+       EDGETAG not in vertex_msg or \
+       EDGEENDTAG not in vertex_msg or \
+       NODETAG not in vertex_msg or \
+       NODEENDTAG not in vertex_msg or \
+       SENDERNODETAG not in vertex_msg or \
+       SENDERNODEENDTAG not in vertex_msg or \
+       SEQNOTAG not in vertex_msg or \
+       SEQNOENDTAG not in vertex_msg:
+         #print("This message from node " + str(sender_node) + \
+         #      " with sequence number " + str(seq_no) + \
+         #      " does not have all the tags")
+         return None
 
     # Extract the vertex id number
     id_first = vertex_msg.find(VERTEXIDTAG) + len(VERTEXIDTAG)        
@@ -104,9 +108,42 @@ def parse_vertex_info(vertex_msg):
     return (vertex_id, edge_list, node_list, sender_node, seq_no) 
 
 def parse_ack(ack_msg):
-    return
+    if ACCEPTTAG not in ack_msg or \
+       ACCEPTENDTAG not in ack_msg or \
+       SEQNOTAG not in ack_msg or \
+       SEQNOENDTAG not in ack_msg or \
+       RECVRNODETAG not in ack_msg or \
+       RECVRNODEENDTAG not in ack_msg:
+         return None
+
+    accept_first = ack_msg.find(ACCEPTTAG) + len(ACCEPTTAG)
+    accept_last = ack_msg.find(ACCEPTENDTAG)
+
+    accept_str = ack_msg[accept_first:accept_last]
+    if accept_str.lower() == 'true':
+        accept = True
+    else:
+        accept = False
+
+    # Extract the sender node's message sequence number (this node's seq no)
+    # this is to find the transaction log that corresponds with this number
+    # and remove it
+    seq_no_first = ack_msg.find(SEQNOTAG) + len(SEQNOTAG)
+    seq_no_last = ack_msg.find(SEQNOENDTAG)
+
+    seq_no_str = ack_msg[seq_no_first:seq_no_last]
+    seq_no = list(ast.literal_eval(seq_no_str))
+
+    recvr_node_first = ack_msg.find(RECVRNODETAG) + len(RECVRNODETAG)
+    recvr_node_last = ack_msg.find(RECVRNODEENDTAG)
+
+    recvr_node = int(ack_msg[recvr_node_first:recvr_node_last])
+
+    return (accept, seq_no, recvr_node)
 
 def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
+
+    direct = "node_" + str(this_node_id) + "/"
     # start server
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server.bind(('localhost', my_port))
@@ -119,6 +156,33 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
             sock = psocket(sock, blocking = True)
             data = sock.precv()
             print("data: " + data)
+            # parse ack message
+            parsed_ack = parse_ack(data)
+            if parsed_ack is not None:
+                accept = parsed_ack[0]
+                seq_no = parsed_ack[1]
+                recvr_node = parsed_ack[2]
+
+                #if accept:
+                # delete the transaction log
+
+                #else:
+                # add back the vertex
+                # delete the transaction log
+                txn_dir = direct + "txn_logs/"
+                log_name = str(recvr_node) + "-" + str(seq_no[recvr_node]) + ".npy"
+                print("log name to delete: " + log_name)
+
+                if not accept:
+                    txn = np.load(txn_dir + log_name).item()
+                    # add back the vertex
+                    vertex_set.add(txn["vertex"])
+
+                # delete the transaction log
+                txn_dir = direct + "txn_logs/"
+                log_name = str(recvr_node) + "-" + str(seq_no[recvr_node]) + ".npy"
+                print("log name to delete: " + log_name)
+                os.remove(txn_dir + log_name)
             # parse the vertex transfer message
             parsed_data = parse_vertex_info(data)
             if parsed_data is not None:
@@ -134,7 +198,6 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                 print("sender node: " + str(sender_node))
                 print("seq no: " + str(seq_no))
 
-                direct = "node_" + str(this_node_id) + "/"
                 # open config file?
                 config = pickle.load(open(direct + "config.p",'rb'))
                 # amount of vertices that can be added to this node
@@ -242,7 +305,7 @@ def make_ack_msg(accepted, seq_no, node_id):
     msg += str(accepted)
     msg += ACCEPTENDTAG
 
-    msg += SEQNOTAG + str(node_seq_no) + SEQNOENDTAG
+    msg += SEQNOTAG + str(seq_no) + SEQNOENDTAG
     msg += RECVRNODETAG + str(node_id) + RECVRNODEENDTAG
 
     return msg
@@ -273,11 +336,9 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
                 ack_msg = make_ack_msg(accepted, seq_no, this_node_id)
 
                 
-                sock.psend(msg)
+                sock.psend(ack_msg)
                 sock.close()
 
-                
-        
         # check every file in the txn_logs directory to see if any of the 
         # transactions have timed out
         # timeout is 10 seconds
@@ -360,7 +421,7 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
                         os.makedirs(txn_dir)
                     #time_str = time.strftime("%Y%m%d-%H%M%S")
                     #log_name = time_str + ".p"
-                    log_name = str(this_node_id) + "-" + str(node_seq_no[this_node_id]) + ".npy"
+                    log_name = str(best_node) + "-" + str(node_seq_no[best_node]) + ".npy"
                     #vertex_transit_file = open(txn_dir + log_name, "wb")
                     msg_dict = {"vertex": v, "edges": edges, \
                                 "vertices_nodes": vertices_nodes, "this_node_id": this_node_id, \

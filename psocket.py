@@ -36,3 +36,6 @@ class psocket:
                 data += chunk
             if data[-5:] == "<EOM>":
                 return data[0:-5]
+
+    def close(self):
+        self.sock.close()
