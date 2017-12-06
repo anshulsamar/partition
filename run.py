@@ -20,8 +20,8 @@ threshold = 0                           # partition thresh
 # NOTE: Added by naokieto
 # Maybe initial sequence number should be initialized to avoid seq num 0
 # attacks
-seq_no = [0] * 5                        # sequence number of message
-ack_no = [0] * 5                        # acknowledgement number
+seq_no = [0] * N                        # sequence number of message
+ack_no = [0] * N                        # acknowledgement number
 
 # Initialize nodes
 for i in nodes:
@@ -44,6 +44,8 @@ def read_vertices(filename):
                 node_to_v[node].add(v)
                 capacity[node] = capacity[node] - 1
                 v_to_v[v] = set()
+
+    np.save("master_v_to_node.npy", v_to_node)
 
 # Read in edge list
 def read_edges(filename):
@@ -99,23 +101,18 @@ def create_nodes():
             os.makedirs(direct)
         port = 10000 + node
         config = [capacity, seq_no, port, nodes, ack_no]
-        pickle.dump(config, open(direct + "config.p",'wb'))
+        #pickle.dump(config, open(direct + "config.p",'wb'))
         pickle.dump(node_to_v[node], open(direct + "v_set.p",'wb'))
-
-        vertex_transfer_fn = "vertex_transfer_msg.p"
-        # create file for holding the vertex message transfer sender info
-        # maybe pickle dump None to the file
-        vertex_transfer_sender = open(direct + vertex_transfer_fn, 'wb')
-
-        pickle.dump(None, vertex_transfer_sender)
-        vertex_transfer_sender.close()
+        np.save(direct + "config.npy", config)
+        #np.save(direct + "v_set.npy", node_to_v[node])
 
         # select only vertices on this node
         v_to_v_s = {}
         for v in v_to_v:
             if v in node_to_v[node]:
                 v_to_v_s[v] = v_to_v[v]
-        pickle.dump(v_to_v_s, open(direct + "v_to_v.p",'wb'))
+        #pickle.dump(v_to_v_s, open(direct + "v_to_v.p",'wb'))
+        np.save(direct + "v_to_v.npy", v_to_v_s)
         # store v to node only for vertices node knows about
         v_to_node_s = {}
         for k,v in v_to_v_s.iteritems():
@@ -124,26 +121,36 @@ def create_nodes():
             for vi in v:
                 if vi not in v_to_node_s:
                     v_to_node_s[vi] = v_to_node[vi]
-        pickle.dump(v_to_node_s, open(direct + "v_to_node.p",'wb'))
-        pickle.dump(node_to_port, open(direct + "node_to_port.p",'wb'))
+        #pickle.dump(v_to_node_s, open(direct + "v_to_node.p",'wb'))
+        #pickle.dump(node_to_port, open(direct + "node_to_port.p",'wb'))
+        np.save(direct + "v_to_node.npy", v_to_node_s)
+        np.save(direct + "node_to_port.npy", node_to_port)
 
 def clean_dirs():
     for node in nodes:
         direct = "node_" + str(node) + "/"
         if os.path.exists(direct):
+            '''
             txn_dir = direct + "txn_logs/"
             ack_dir = direct + "ack_msg/"
             if os.path.exists(txn_dir):
                 shutil.rmtree(txn_dir)
             if os.path.exists(ack_dir):
                 shutil.rmtree(ack_dir)
+            '''
+            shutil.rmtree(direct)
+         
 
 if (len(sys.argv) < 2):
     print("USAGE: python run.py [#nodes] [capacity] [file1] [file2]")
     exit()
 
+clean_dirs()
+N = int(sys.argv[1])
+nodes = set(range(0,N))
+seq_no = [0] * N                        # sequence number of message
+ack_no = [0] * N                        # acknowledgement number
 read_vertices(sys.argv[3])
 read_edges(sys.argv[4])
 print_graph('starting_config')
 create_nodes()
-clean_dirs()
