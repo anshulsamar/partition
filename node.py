@@ -241,7 +241,7 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                     np.save(direct + "v_to_v.npy", edge_set)
 
                     # Add node to this node's v to node set
-                    for v in node_list:
+                    for v in sender_node_list:
                         node_set[v] = sender_node_list[v] 
                     node_set[vertex_id] = this_node_id
                     print("new node list: " + str(node_set))
@@ -255,7 +255,8 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                     np.save("master_v_to_node.npy", master_v_to_node)
 
                     accepted = True
- 
+
+                    print("done!!!") 
                 ack_no[this_node_id] += 1
                 # write to config
                 # might have to use numpy instead of pickle
@@ -279,14 +280,14 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
             sleep(1)
             continue
 
-def out_in (v):
-    node = v_to_node[v]
+def out_in (v, v_to_node_map, v_to_v_map):
+    node = v_to_node_map[v]
     out_n = set()
     in_n = set()
     #print("v_to_v: " + str(v_to_v))
     #print("v_to_v for " + str(v) + ": " + str(v_to_v[v]))
-    for vi in v_to_v[v]:
-        if v_to_node[vi] == node:
+    for vi in v_to_v_map[v]:
+        if v_to_node_map[vi] == node:
             in_n.add(vi)
         else:
             out_n.add(vi)
@@ -326,14 +327,18 @@ def make_ack_msg(accepted, seq_no, node_id):
 
     return msg
 
-def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_port, v_to_node):
-    print("vertex_set: ", vertex_set)
+def client(this_node_id, node_seq_no, nodes, capacity_left, this_port):
+    #print("vertex_set: ", vertex_set)
     while True:
         # check to see if any vertex transfer messages received (we
         # can do this via vertex_transfer_msg.txt file)
         direct = "node_" + str(this_node_id) + "/"
         ack_dir = direct + "ack_msg/"
 
+        #vertex_set = np.load(direct + "v_set.npy")
+        vertex_set = pickle.load(open(direct + 'v_set.p','rb'))
+        this_v_to_v = np.load(direct + "v_to_v.npy").item()
+        this_v_to_node = np.load(direct + "v_to_node.npy").item()
         if os.path.exists(ack_dir):
             for filename in os.listdir(ack_dir):
                 msg_metadata = np.load(ack_dir + filename).item()
@@ -375,22 +380,24 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
                     pickle.dump(vertex_set, open(direct + 'v_set.p', 'wb'))
                     #np.save(direct + "v_set.npy", vertex_set)
 
-                    v_to_node[vertex_to_add_back] = this_node_id
-                    np.save(direct + "v_to_node.npy", v_to_node)
+                    this_v_to_node[vertex_to_add_back] = this_node_id
+                    np.save(direct + "v_to_node.npy", this_v_to_node)
        
         # need to make sure we have at least one vertex
         # to potentially transfer to another node
         if len(vertex_set) > 0:
             v = random.choice(list(vertex_set))
             #print("Picked vertex: " + str(v) + " out of " + str(vertex_set))
+            #print("v_to_v: " + str(v_to_v) + " v: " + str(v))
+            #print("v_to_node: " + str(this_v_to_node))
             # out and in neighbors
-            out_n, in_n = out_in(v)
+            out_n, in_n = out_in(v, this_v_to_node, this_v_to_v)
             # out edges by node
             out_counts = {}
             for n in nodes:
                 out_counts[n] = 0
             for vi in out_n:
-                out_node = v_to_node[vi]
+                out_node = this_v_to_node[vi]
                 out_counts[out_node] = out_counts[out_node] + 1
             best_node = max(out_counts.iterkeys(),
                             key=lambda k: out_counts[k])
@@ -412,7 +419,7 @@ def client(this_node_id, vertex_set, node_seq_no, nodes, capacity_left, this_por
                     vertices_nodes = {}
 
                     for v2 in edges:
-                        vertices_nodes[v2] = v_to_node[v2]
+                        vertices_nodes[v2] = this_v_to_node[v2]
 
                     node_seq_no[this_node_id] += 1
                     new_config = [capacity_left, node_seq_no, this_port, nodes]
@@ -545,7 +552,7 @@ server_t = threading.Thread(target=server, args=(my_node, v_set, v_to_v, v_to_no
 server_t.daemon = True
 server_t.start()
 print "Starting Client"
-client_t = threading.Thread(target=client, args=(my_node, v_set, seq_no, nodes, capacity_left, my_port, v_to_node))
+client_t = threading.Thread(target=client, args=(my_node, seq_no, nodes, capacity_left, my_port))
 client_t.daemon = True
 client_t.start()
 
