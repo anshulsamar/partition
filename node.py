@@ -539,6 +539,104 @@ def print_data_structures():
     print(v_to_v)
     print "Vertex to Node"
     print(v_to_node)
+
+VERTEXTAG = "<VERTEX>"
+OLDNODETAG = "<OLDNODE>"
+NEWNODETAG = "<NEWNODE>"
+
+def out_in (v, v_to_node_map, v_to_v_map):
+    node = v_to_node_map[v]
+    out_n = set()
+    in_n = set()
+    for vi in v_to_v_map[v]:
+        if v_to_node_map[vi] == node:
+            in_n.add(vi)
+        else:
+            out_n.add(vi)
+    return out_n, in_n
+
+def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
+    txn_msg = "NONE"
+    # need to make sure we have at least one vertex
+    # to potentially transfer to another node
+    if len(vertex_set) > 0:
+        v = random.choice(list(vertex_set))
+
+        # out and in neighbors
+        out_n, in_n = out_in(v, this_v_to_node, this_v_to_v)
+        # out edges by node
+        out_counts = {}
+        for n in nodes:
+            out_counts[n] = 0
+        for vi in out_n:
+            out_node = this_v_to_node[vi]
+            out_counts[out_node] = out_counts[out_node] + 1
+        best_node = max(out_counts.iterkeys(),
+                        key=lambda k: out_counts[k])
+        # diff is num_outedges - num_inedges
+        diff = out_counts[best_node] - len(in_n)
+
+        # check that the node we want to send this vertex to has capacity
+        if diff > 0 and this_node_to_capacity[best_node] > 0:
+            txn_msg = VERTEXTAG + str(v) + OLDNODETAG + str(this_node) + \
+                      NEWNODETAG + str(best_node)        
+    return txn_msg
+
+def parse_transaction(txn):
+
+    if VERTEXTAG not in txn or \
+       OLDNODETAG not in txn or \
+       NEWNODETAG not in txn:
+        return None
+    
+    # Get the vertex id
+    vertex_first = txn.find(VERTEXTAG) + len(VERTEXTAG)        
+    vertex_last = txn.find(OLDNODETAG)
+    vertex_id = int(txn[vertex_first:vertex_last])
+
+    # Get the sender node id
+    sender_first = txn.find(OLDNODETAG) + len(OLDNODETAG)
+    sender_last = txn.find(NEWNODETAG)
+    sender_node = int(txn[sender_first:sender_last])
+
+    # Get the recipient node id
+    recv_first = txn.find(NEWNODETAG) + len(NEWNODETAG)
+    recv_node = int(txn[recv_first:])
+
+    return (vertex_id, sender_node, recv_node) 
+
+def execute_transaction (txn, this_node, vertex_set, this_v_to_node, this_node_to_capacity):
+    if txn == "NONE":
+        return (vertex_set, this_v_to_node, this_node_to_capacity)
+    
+    res = parse_transaction(txn)
+
+    if res is None:
+        return (vertex_set, this_v_to_node, this_node_to_capacity)
+
+    (v, snd_node, recv_node) = res
+
+    # Make the updates to the local data structures
+    if snd_node == this_node:
+        vertex_set.remove(v)
+    elif recv_node == this_node:
+        vertex_set.add(v)
+
+    this_v_to_node[v] = recv_node
+    this_node_to_capacity[snd_node] += 1
+    this_node_to_capacity[recv_node] -= 1
+
+    return (vertex_set, this_v_to_node, this_node_to_capacity)
+
+vertex_set_3 = set([22, 23, 24])
+vertex_set_1 = set([20, 25])
+vertex_set_2 = set([21])
+this_v_to_node = {20:1, 21:2, 22:3, 23:3, 24:3, 25:1}
+this_node_to_capacity = {1:1, 2:2, 3:0}
+print(execute_transaction("<VERTEX>20<OLDNODE>1<NEWNODE>2", 3, vertex_set_3, this_v_to_node, this_node_to_capacity))
+
+print(execute_transaction("<VERTEX>20<OLDNODE>1<NEWNODE>2", 2, vertex_set_2, this_v_to_node, this_node_to_capacity))
+'''
     
 if (len(sys.argv) < 2):
     print("USAGE: python node.py [node_id]")
@@ -584,4 +682,4 @@ client_t.start()
 
 while True:
     sleep(.1)
-
+'''
