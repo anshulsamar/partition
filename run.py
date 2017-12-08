@@ -31,17 +31,87 @@ def read_vertices(filename, nodes_set, node_to_capacity_map, v_to_node_map, node
     return (node_to_capacity_map, v_to_node_map, node_to_v_map, v_to_v_map)
     #np.save("master_v_to_node.npy", v_to_node)
 
+def read_edges(filename, v_to_v_map, edges_list):
+    with open(filename, 'rb') as f:
+        for line in f:
+            v1, v2 = line.split(',')
+            v1 = int(v1)
+            v2 = int(v2)
+            v_to_v_map[v1].add(v2)
+            v_to_v_map[v2].add(v1)
+            edges_list.add((v1,v2))
+
+    return (v_to_v_map, edges_list)
+
+# Prints graph and nodes (based on graphviz ex)
+def print_graph (fname, nodes_set, node_to_v_map, edges_list):
+    g = Graph('G', filename=fname, format='png')
+    c = {}
+
+    for node in nodes_set:
+        # Note 'cluster_' prefix required naming
+        node_name = 'cluster_' + str(node)        
+        c[node] = Graph(name=node_name)
+        c[node].attr(style='filled')
+        c[node].attr(color='lightgrey')
+        c[node].node_attr.update(style='filled', color='white')
+        for v in node_to_v_map[node]:
+            c[node].node(str(v))                  
+        c[node].attr(fontsize='8')
+        c[node].attr(label=node_name)
+        g.subgraph(c[node])
+
+    for e in edges_list:
+        g.edge(str(e[0]),str(e[1]))
+    g.render(fname)
+
 
 # Create folders for nodes, populate data
-def create_nodes(nodes_set, node_to_port_map):
+def create_nodes(nodes_set, node_to_port_map, node_to_v_map, v_to_v_map, v_to_node_map, node_to_capacity_map):
     for node in nodes:
         direct = "node_" + str(node) + "/"
         if not os.path.exists(direct):
             os.makedirs(direct)
         port = 10000 + node
         config = [port, nodes]
-        pickle.dump(config, open(direct + "config.p",'wb'))
-        pickle.dump(node_to_port_map, open(direct + "node_to_port.p",'wb'))
+
+        config_f = open(direct + "config.p", "wb")
+        pickle.dump(config, config_f)
+        config_f.close()
+
+        node_to_port_f = open(direct + "node_to_port.p", "wb")
+        pickle.dump(node_to_port_map, node_to_port_f)
+        node_to_port_f.close()
+
+        v_set_f = open(direct + "v_set.p", "wb")
+        pickle.dump(node_to_v_map[node], v_set_f)
+        v_set_f.close()
+
+        # select only vertices on this node
+        v_to_v_s = {}
+        for v in v_to_v_map:
+            if v in node_to_v_map[node]:
+                v_to_v_s[v] = v_to_v_map[v]
+        v_to_v_f = open(direct + "v_to_v.p", "wb")
+        pickle.dump(v_to_v_s, v_to_v_f)
+        v_to_v_f.close()
+
+        # store v to node only for vertices node knows about
+        v_to_node_s = {}
+        for k,v in v_to_v_s.iteritems():
+            if k not in v_to_node_s:
+                v_to_node_s[k] = v_to_node_map[k]
+            for vi in v:
+                if vi not in v_to_node_s:
+                    v_to_node_s[vi] = v_to_node_map[vi]
+        v_to_node_f = open(direct + "v_to_node.p", "wb")
+        pickle.dump(v_to_node_s, v_to_node_f)
+        v_to_node_f.close()
+
+        # keep track of the capacities at all the nodes
+        capacity_f = open(direct + "capacity.p", "wb")
+        pickle.dump(node_to_capacity_map, capacity_f)
+        capacity_f.close()
 
 
 if (len(sys.argv) < 5):
@@ -72,4 +142,6 @@ clean_dirs(nodes)
 (capacity, v_to_node, node_to_v, v_to_v) = read_vertices(vertices_file, nodes, \
                                                          capacity, v_to_node, node_to_v, \
                                                          v_to_v)
-create_nodes(nodes, node_to_port)
+(v_to_v, edges) = read_edges(edges_file, v_to_v, edges)
+print_graph('starting_config', nodes, node_to_v, edges)
+create_nodes(nodes, node_to_port, node_to_v, v_to_v, v_to_node, capacity)

@@ -24,6 +24,11 @@ my_port = -1
 nodes = None
 node_to_port = None
 
+v_to_node = None
+node_to_v = None
+v_to_v = None
+node_to_capacity = None
+
 #################### PAXOS HELPERS ####################
 
 class Proposal:
