@@ -197,6 +197,10 @@ def parse_accept_reply (data):
 
 #################### TRANSACTION HELPER ####################
 
+VERTEXTAG = "<VERTEX>"
+OLDNODETAG = "<OLDNODE>"
+NEWNODETAG = "<NEWNODE>"
+
 transactions = {}
 t_lock = threading.Lock()
 
@@ -227,8 +231,50 @@ def chosen (instance):
 def execute_transaction (txn):
     print "Executed: " + txn
 
-def suggest_transaction ():
-    return "TXN_" + str(my_node)
+def out_in (v, v_to_node_map, v_to_v_map):
+    node = v_to_node_map[v]
+    out_n = set()
+    in_n = set()
+    for vi in v_to_v_map[v]:
+        if v_to_node_map[vi] == node:
+            in_n.add(vi)
+        else:
+            out_n.add(vi)
+    return out_n, in_n
+
+def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
+
+    nodes = this_node_to_capacity.keys()
+    txn_msg = "NONE"
+    #print("this_node: " + str(this_node))
+    #print("vertex_set: " + str(vertex_set))
+    #print("this_v_to_v: " + str(this_v_to_v))
+    #print("this_v_to_node: " + str(this_v_to_node))
+    #print("this_node_to_capacity: " + str(this_node_to_capacity))
+    # need to make sure we have at least one vertex
+    # to potentially transfer to another node
+    if len(vertex_set) > 0:
+        v = random.choice(list(vertex_set))
+
+        # out and in neighbors
+        out_n, in_n = out_in(v, this_v_to_node, this_v_to_v)
+        # out edges by node
+        out_counts = {}
+        for n in nodes:
+            out_counts[n] = 0
+        for vi in out_n:
+            out_node = this_v_to_node[vi]
+            out_counts[out_node] = out_counts[out_node] + 1
+        best_node = max(out_counts.iterkeys(),
+                        key=lambda k: out_counts[k])
+        # diff is num_outedges - num_inedges
+        diff = out_counts[best_node] - len(in_n)
+
+        # check that the node we want to send this vertex to has capacity
+        if diff > 0 and this_node_to_capacity[best_node] > 0:
+            txn_msg = VERTEXTAG + str(v) + OLDNODETAG + str(this_node) + \
+                      NEWNODETAG + str(best_node)        
+    return txn_msg
 
 #################### PRINT HELPER ####################
 
@@ -449,7 +495,8 @@ def run ():
     for i in range(0,2):
         print_run("STARTING PAXOS #" + str(cur_instance))
         if not chosen(cur_instance):
-            txn = suggest_transaction()
+            txn = suggest_transaction(my_node, v_set, v_to_v, v_to_node, node_to_capacity)
+            #txn = suggest_transaction()
             proposer_sema[cur_instance] = threading.Semaphore(0)
             # start worker for this instance
             worker_lock.release()
