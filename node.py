@@ -24,8 +24,8 @@ my_port = -1
 nodes = None
 node_to_port = None
 
+v_set = None
 v_to_node = None
-node_to_v = None
 v_to_v = None
 node_to_capacity = None
 
@@ -386,14 +386,36 @@ def proposer (instance, txn):
     return
 
 def setup ():
-    global my_node, direct, config, my_port, nodes, node_to_port
+    global my_node, direct, config, my_port, nodes, node_to_port, \
+           v_set, v_to_node, v_to_v
     my_node = int(sys.argv[1])
     directory = "node_" + str(my_node) + "/"
-    config = pickle.load(open(directory + 'config.p','rb'))
+
+    config_f = open(directory + "config.p", "rb")
+    config = pickle.load(config_f)
+    config_f.close()
+
     my_port = config[0]
     nodes = config[1]
-    node_to_port = pickle.load(open(directory + 'node_to_port.p',
-                                    'rb'))
+    node_to_port_f = open(directory + "node_to_port.p", "rb")
+    node_to_port = pickle.load(node_to_port_f)
+    node_to_port_f.close()
+
+    v_set_f = open(directory + "v_set.p", "rb")
+    v_set = pickle.load(v_set_f)
+    v_set_f.close()
+
+    v_to_node_f = open(directory + "v_to_node.p", "rb")
+    v_to_node = pickle.load(v_to_node_f)
+    v_to_node_f.close() 
+
+    v_to_v_f = open(directory + "v_to_v.p", "rb")
+    v_to_v = pickle.load(v_to_v_f)
+    v_to_v_f.close()
+
+    node_to_capacity_f = open(directory + "capacity.p", "rb")
+    node_to_capacity = pickle.load(node_to_capacity_f)
+    node_to_capacity_f.close()
 
 def get_wait_time():
     txn_count = 0
