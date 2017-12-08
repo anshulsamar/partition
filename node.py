@@ -387,7 +387,7 @@ def proposer (instance, txn):
 
 def setup ():
     global my_node, direct, config, my_port, nodes, node_to_port, \
-           v_set, v_to_node, v_to_v
+           v_set, v_to_node, v_to_v, node_to_capacity
     my_node = int(sys.argv[1])
     directory = "node_" + str(my_node) + "/"
 
