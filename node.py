@@ -8,6 +8,7 @@ import os
 import random
 import time
 from termcolor import colored
+import ast
 
 #################### NODE STRUCTURES ####################
 
@@ -198,6 +199,8 @@ def parse_accept_reply (data):
 #################### TRANSACTION HELPER ####################
 
 VERTEXTAG = "<VERTEX>"
+# This lists the vertices that are connected to the above vertex
+VERTEXLISTTAG = "<VERTEXEDGE>"
 OLDNODETAG = "<OLDNODE>"
 NEWNODETAG = "<NEWNODE>"
 
@@ -228,9 +231,6 @@ def chosen (instance):
         t_lock.release()
         return 0
 
-def execute_transaction (txn):
-    print "Executed: " + txn
-
 def out_in (v, v_to_node_map, v_to_v_map):
     node = v_to_node_map[v]
     out_n = set()
@@ -246,11 +246,12 @@ def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, thi
 
     nodes = this_node_to_capacity.keys()
     txn_msg = "NONE"
-    #print("this_node: " + str(this_node))
-    #print("vertex_set: " + str(vertex_set))
-    #print("this_v_to_v: " + str(this_v_to_v))
-    #print("this_v_to_node: " + str(this_v_to_node))
-    #print("this_node_to_capacity: " + str(this_node_to_capacity))
+    print("suggest_transaction:")
+    print("this_node: " + str(this_node))
+    print("vertex_set: " + str(vertex_set))
+    print("this_v_to_v: " + str(this_v_to_v))
+    print("this_v_to_node: " + str(this_v_to_node))
+    print("this_node_to_capacity: " + str(this_node_to_capacity))
     # need to make sure we have at least one vertex
     # to potentially transfer to another node
     if len(vertex_set) > 0:
@@ -272,10 +273,73 @@ def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, thi
 
         # check that the node we want to send this vertex to has capacity
         if diff > 0 and this_node_to_capacity[best_node] > 0:
-            txn_msg = VERTEXTAG + str(v) + OLDNODETAG + str(this_node) + \
+            txn_msg = VERTEXTAG + str(v) + \
+                      VERTEXLISTTAG + str(this_v_to_v[v]) + \
+                      OLDNODETAG + str(this_node) + \
                       NEWNODETAG + str(best_node)        
     return txn_msg
 
+def parse_transaction(txn):
+
+    if VERTEXTAG not in txn or \
+       VERTEXLISTTAG not in txn or \
+       OLDNODETAG not in txn or \
+       NEWNODETAG not in txn:
+        return None
+    
+    # Get the vertex id
+    vertex_first = txn.find(VERTEXTAG) + len(VERTEXTAG)        
+    vertex_last = txn.find(VERTEXLISTTAG)
+    vertex_id = int(txn[vertex_first:vertex_last])
+
+    # Get the vertices that were connected to the above vertex
+    vertex_list_first = txn.find(VERTEXLISTTAG) + len(VERTEXLISTTAG)
+    vertex_list_last = txn.find(OLDNODETAG)
+    vertex_list_str = txn[vertex_list_first:vertex_list_last]
+    vertex_list = set(ast.literal_eval(vertex_list_str))
+
+    # Get the sender node id
+    sender_first = txn.find(OLDNODETAG) + len(OLDNODETAG)
+    sender_last = txn.find(NEWNODETAG)
+    sender_node = int(txn[sender_first:sender_last])
+
+    # Get the recipient node id
+    recv_first = txn.find(NEWNODETAG) + len(NEWNODETAG)
+    recv_node = int(txn[recv_first:])
+
+    return (vertex_id, sender_node, recv_node) 
+
+
+def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
+    if txn == "NONE":
+        return (vertex_set, this_v_to_node, this_node_to_capacity)
+    
+    res = parse_transaction(txn)
+
+    if res is None:
+        return (vertex_set, this_v_to_node, this_node_to_capacity)
+
+    (v, snd_node, recv_node) = res
+
+    # Make the updates to the local data structures
+    if snd_node == this_node:
+        vertex_set.remove(v)
+    elif recv_node == this_node:
+        vertex_set.add(v)
+
+    this_v_to_v[v]
+
+    this_v_to_node[v] = recv_node
+    this_node_to_capacity[snd_node] += 1
+    this_node_to_capacity[recv_node] -= 1
+
+    print "Executed: " + txn
+
+    return (vertex_set, this_v_to_node, this_node_to_capacity)
+'''
+def execute_transaction (txn):
+    print "Executed: " + txn
+'''
 #################### PRINT HELPER ####################
 
 def print_run(x):
@@ -287,6 +351,13 @@ def print_proposer (x):
 def print_acceptor (x):
     print colored("\t\t" + x, "cyan")
 
+def print_graph_structures():
+    global my_node, v_set, v_to_node, v_to_v, node_to_capacity
+    print("my node: " + str(my_node))
+    print("vertex set: " + str(v_set))
+    print("vertex to node map: " + str(v_to_node))
+    print("vertex to vertex list map: " + str(v_to_v))
+    print("node to capacity map: " + str(node_to_capacity))
 #################### COMMAND CONTROL ####################
     
 def server ():     
@@ -477,7 +548,7 @@ def get_wait_time():
         return float(txn_count)/len(transactions)        
     
 def run ():
-    global cur_instance  
+    global cur_instance, my_node, v_set, v_to_v, v_to_node, node_to_capacity  
     worker_lock.acquire()
 
     # start accepting messages
@@ -515,7 +586,12 @@ def run ():
             # refresh paxos state
             refresh()
         txn = get_transaction(cur_instance)
-        execute_transaction(txn)
+        print("Before:")
+        print_graph_structures()
+        (v_set, v_to_node, node_to_capacity) = execute_transaction (txn, my_node, v_set, v_to_node, node_to_capacity)
+        print("After:")
+        print_graph_structures()
+        #execute_transaction(txn)
         cur_instance += 1
     print "done."
 
