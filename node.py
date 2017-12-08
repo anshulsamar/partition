@@ -556,6 +556,8 @@ def out_in (v, v_to_node_map, v_to_v_map):
     return out_n, in_n
 
 def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
+
+    nodes = this_node_to_capacity.keys()
     txn_msg = "NONE"
     # need to make sure we have at least one vertex
     # to potentially transfer to another node
@@ -630,12 +632,17 @@ def execute_transaction (txn, this_node, vertex_set, this_v_to_node, this_node_t
 
 vertex_set_3 = set([22, 23, 24])
 vertex_set_1 = set([20, 25])
-vertex_set_2 = set([21])
-this_v_to_node = {20:1, 21:2, 22:3, 23:3, 24:3, 25:1}
-this_node_to_capacity = {1:1, 2:2, 3:0}
+vertex_set_2 = set([21, 26])
+v_to_v = {20:[21], 21:[20, 25, 26], 22:[23], 23:[22, 24], 24:[23], 25:[21], 26:[21]}
+this_v_to_node = {20:1, 21:2, 22:3, 23:3, 24:3, 25:1, 26:2}
+this_node_to_capacity = {1:2, 2:2, 3:1}
+
+print(suggest_transaction(1, vertex_set_1, v_to_v, this_v_to_node, this_node_to_capacity))
 print(execute_transaction("<VERTEX>20<OLDNODE>1<NEWNODE>2", 3, vertex_set_3, this_v_to_node, this_node_to_capacity))
 
 print(execute_transaction("<VERTEX>20<OLDNODE>1<NEWNODE>2", 2, vertex_set_2, this_v_to_node, this_node_to_capacity))
+
+
 '''
     
 if (len(sys.argv) < 2):
