@@ -432,6 +432,7 @@ def run ():
             sleep(wait)
             p = threading.Thread(target=proposer,
                                  args=(cur_instance, txn))
+            p.daemon = True
             p.start()
             # stop proposer
             p.join()
@@ -446,4 +447,6 @@ def run ():
 
 print "Starting"
 setup()
+# sleep until all nodes are up
+sleep(2*(len(nodes) - my_node))
 run()
