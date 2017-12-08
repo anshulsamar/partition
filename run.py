@@ -101,9 +101,9 @@ def create_nodes():
             os.makedirs(direct)
         port = 10000 + node
         config = [capacity, seq_no, port, nodes, ack_no]
-        #pickle.dump(config, open(direct + "config.p",'wb'))
+        pickle.dump(config, open(direct + "config.p",'wb'))
         pickle.dump(node_to_v[node], open(direct + "v_set.p",'wb'))
-        np.save(direct + "config.npy", config)
+        #np.save(direct + "config.npy", config)
         #np.save(direct + "v_set.npy", node_to_v[node])
 
         # select only vertices on this node
@@ -111,8 +111,8 @@ def create_nodes():
         for v in v_to_v:
             if v in node_to_v[node]:
                 v_to_v_s[v] = v_to_v[v]
-        #pickle.dump(v_to_v_s, open(direct + "v_to_v.p",'wb'))
-        np.save(direct + "v_to_v.npy", v_to_v_s)
+        pickle.dump(v_to_v_s, open(direct + "v_to_v.p",'wb'))
+        #np.save(direct + "v_to_v.npy", v_to_v_s)
         # store v to node only for vertices node knows about
         v_to_node_s = {}
         for k,v in v_to_v_s.iteritems():
@@ -121,10 +121,10 @@ def create_nodes():
             for vi in v:
                 if vi not in v_to_node_s:
                     v_to_node_s[vi] = v_to_node[vi]
-        #pickle.dump(v_to_node_s, open(direct + "v_to_node.p",'wb'))
-        #pickle.dump(node_to_port, open(direct + "node_to_port.p",'wb'))
-        np.save(direct + "v_to_node.npy", v_to_node_s)
-        np.save(direct + "node_to_port.npy", node_to_port)
+        pickle.dump(v_to_node_s, open(direct + "v_to_node.p",'wb'))
+        pickle.dump(node_to_port, open(direct + "node_to_port.p",'wb'))
+        #np.save(direct + "v_to_node.npy", v_to_node_s)
+        #np.save(direct + "node_to_port.npy", node_to_port)
 
 def clean_dirs():
     for node in nodes:

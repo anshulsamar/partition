@@ -167,16 +167,24 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                 log_name = str(recvr_node) + "-" + str(seq_no[recvr_node]) + ".npy"
 
                 if not accept:
-                    with np.load(txn_dir + log_name).item() as txn:
-                        # add back the vertex
-                        vertex_to_add_back = txn["vertex"]
+                    #with np.load(txn_dir + log_name).item() as txn:
+                    txn_f = open(txn_dir + log_name, "rb")
+                    txn = pickle.load(txn_f)
+                    txn_f.close()
+                    # add back the vertex
+                    vertex_to_add_back = txn["vertex"]
 
-                        vertex_set.add(vertex_to_add_back)
-                        pickle.dump(vertex_set, open(direct + "v_set.p",'wb'))
-                        #np.save(direct + "v_set.npy", vertex_set)
+                    vertex_set.add(vertex_to_add_back)
+                    v_set_f = open(direct + "v_set.p", "wb")
+                    pickle.dump(vertex_set, v_set_f)
+                    v_set_f.close()
+                    #np.save(direct + "v_set.npy", vertex_set)
 
-                        v_to_node[vertex_to_add_back] = this_node_id
-                        np.save(direct + "v_to_node.npy", v_to_node)
+                    v_to_node[vertex_to_add_back] = this_node_id
+                    v_to_node_f = open(direct + "v_to_node.p", "wb")
+                    pickle.dump(v_to_node, v_to_node_f)
+                    v_to_node_f.close()
+                    #np.save(direct + "v_to_node.npy", v_to_node)
 
                 # delete the transaction log
                 txn_dir = direct + "txn_logs/"
@@ -197,10 +205,11 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                 print("sender node: " + str(sender_node))
                 print("sender seq no: " + str(sender_seq_no))
 
-                print("config file path: " + direct + "config.npy")
                 # open config file?
-                #config = pickle.load(open(direct + "config.p",'rb'))
-                config = np.load(direct + "config.npy")
+                config_f = open(direct + "config.p", "rb")
+                config = pickle.load(config_f)
+                config_f.close()
+                #config = np.load(direct + "config.npy")
                 #with np.load(direct + "config.npy") as config:
                 print("we go tconfig!!!: " + str(config))
                 # amount of vertices that can be added to this node
@@ -209,7 +218,7 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                 this_port = config[2]
                 this_nodes = config[3]
 
-                del config
+                #del config
                 print("capacity_left: " + str(capacity_left))
                 print("this_nodes: " + str(this_nodes))
 
@@ -222,31 +231,39 @@ def server(this_node_id, vertex_set, edge_set, node_set, ack_no):
                     #new_seq_no = seq_no + 1
                     print("new config!!!!")
                     new_config = [new_capacity_left, this_seq_no, this_port, this_nodes]
-                    #pickle.dump(new_config, open(direct + "config.p", 'wb'))
+                    
+                    new_config_f = open(direct + "config.p", "wb")
+                    pickle.dump(new_config, new_config_f)
+                    new_config_f.close()
                     print("lakers")
-                    np.save(direct + "config.npy", new_config)
-                    print("losers")
+                    #np.save(direct + "config.npy", new_config)
                     # need to update
                     
                     # Add vertex to this node's vertex set
                     vertex_set.add(vertex_id)
                     print("new vertex set: " + str(vertex_set))
-                    pickle.dump(vertex_set, open(direct + 'v_set.p', 'wb'))
+                    new_v_set_f = open(direct + 'v_set.p', 'wb')
+                    pickle.dump(vertex_set, new_v_set_f)
+                    new_v_set_f.close()
                     #np.save(direct + "v_set.npy", vertex_set)
 
                     # Add edge to this node's edge set
                     edge_set[vertex_id] = sender_v_to_v
                     print("new edge list: " + str(edge_set))
-                    #pickle.dump(edge_set, open(direct + 'v_to_v.p', 'wb'))
-                    np.save(direct + "v_to_v.npy", edge_set)
+                    new_v_to_v_f = open(direct + 'v_to_v.p', 'wb')
+                    pickle.dump(edge_set, new_v_to_v_f)
+                    new_v_to_v_f.close()
+                    #np.save(direct + "v_to_v.npy", edge_set)
 
                     # Add node to this node's v to node set
                     for v in sender_node_list:
                         node_set[v] = sender_node_list[v] 
                     node_set[vertex_id] = this_node_id
                     print("new node list: " + str(node_set))
-                    #pickle.dump(node_set, open(direct + 'v_to_node.p', 'wb'))
-                    np.save(direct + "v_to_node.npy", node_set)
+                    v_to_node_f = open(direct + 'v_to_node.p', 'wb')
+                    pickle.dump(node_set, v_to_node_f)
+                    v_to_node_f.close()
+                    #np.save(direct + "v_to_node.npy", node_set)
 
                     # save to master v_to_node for graphing
                     #master_v_to_node = np.load("master_v_to_node.npy").item()
@@ -374,8 +391,14 @@ def client(this_node_id, node_seq_no, nodes, capacity_left, this_port):
             for filename in os.listdir(os.getcwd() + "/" + txn_dir):
                 #txn = np.load(txn_dir + filename).item()
                 with np.load(txn_dir + filename).item() as txn:
-                    this_v_to_v = np.load(direct + "v_to_v.npy").item()
-                    this_v_to_node = np.load(direct + "v_to_node.npy").item()
+                    this_v_to_v_f = open(direct + "v_to_v.p", "rb")
+                    this_v_to_v = pickle.load(this_v_to_v_f)
+                    this_v_to_v_f.close()
+                    #this_v_to_v = np.load(direct + "v_to_v.npy").item()
+                    this_v_to_node_f = open(direct + "v_to_node.p", "rb")
+                    this_v_to_node = pickle.load(this_v_to_node_f)
+                    this_v_to_node_f.close()
+                    #this_v_to_node = np.load(direct + "v_to_node.npy").item()
                     now_ts = datetime.datetime.now()
                     delta = now_ts - txn["ts"]
                     # if we have not heard a reply back from the server that
@@ -386,18 +409,21 @@ def client(this_node_id, node_seq_no, nodes, capacity_left, this_port):
                         vertex_to_add_back = txn["vertex"]
 
                         vertex_set.add(vertex_to_add_back)
-                        pickle.dump(vertex_set, open(direct + 'v_set.p', 'wb'))
+                        this_v_set_f = open(direct + 'v_set.p', 'wb')
+                        pickle.dump(vertex_set, this_v_set_f)
+                        this_v_set_f.close()
                         #np.save(direct + "v_set.npy", vertex_set)
-
+                        
                         this_v_to_node[vertex_to_add_back] = this_node_id
-                        np.save(direct + "v_to_node.npy", this_v_to_node)
+                        this_v_to_node_f = open(direct + "v_to_node.p", "wb")
+                        pickle.dump(this_v_to_node, this_v_to_node_f)
+                        this_v_to_node_f.close()
+                        #np.save(direct + "v_to_node.npy", this_v_to_node)
 
                         master_v_to_node = np.load("master_v_to_node.npy").item()
                         master_v_to_node[vertex_to_add_back] = this_node_id
                         np.save("master_v_to_node.npy", master_v_to_node)
                         del master_v_to_node
-                    del this_v_to_v
-                    del this_v_to_node 
        
         # need to make sure we have at least one vertex
         # to potentially transfer to another node
@@ -407,9 +433,16 @@ def client(this_node_id, node_seq_no, nodes, capacity_left, this_port):
             #print("v_to_v: " + str(v_to_v) + " v: " + str(v))
             #print("v_to_node: " + str(this_v_to_node))
 
-            this_v_to_v = np.load(direct + "v_to_v.npy").item()
-            this_v_to_node = np.load(direct + "v_to_node.npy").item()
+            #this_v_to_v = np.load(direct + "v_to_v.npy").item()
+            #this_v_to_node = np.load(direct + "v_to_node.npy").item()
 
+            this_v_to_v_f = open(direct + "v_to_v.p", "rb")
+            this_v_to_v = pickle.load(this_v_to_v_f)
+            this_v_to_v_f.close()
+
+            this_v_to_node_f = open(direct + "v_to_node.p", "rb")
+            this_v_to_node = pickle.load(this_v_to_node_f)
+            this_v_to_node_f.close()
             # out and in neighbors
             out_n, in_n = out_in(v, this_v_to_node, this_v_to_v)
             # out edges by node
@@ -462,9 +495,17 @@ def client(this_node_id, node_seq_no, nodes, capacity_left, this_port):
                     # Remove the vertex from the node vertex list so that it's not chosen again
                     vertex_set.remove(v)
                     v_to_node[v] = best_node
-                    pickle.dump(vertex_set, open(direct + 'v_set.p', 'wb'))
+
+                    v_set_f = open(direct + 'v_set.p', 'wb')
+                    pickle.dump(vertex_set, v_set_f)
+                    v_set_f.close()
                     #np.save(direct + "v_set.npy", vertex_set)
-                    np.save(direct + "v_to_node.npy", v_to_node)
+                    #np.save(direct + "v_to_node.npy", v_to_node)
+
+                    v_to_node_f = open(direct + "v_to_node.p", "wb")
+                    pickle.dump(v_to_node, v_to_node_f)
+                    v_to_node_f.close()
+
                     master_v_to_node = np.load("master_v_to_node.npy")
                     master_v_to_node[v] = best_node
                     np.save("master_v_to_node.npy", master_v_to_node)
@@ -497,8 +538,8 @@ def client(this_node_id, node_seq_no, nodes, capacity_left, this_port):
                     print("exception!!!!!!")
                     sleep(1)
                     continue
-            del this_v_to_v
-            del this_v_to_node
+            #del this_v_to_v
+            #del this_v_to_node
 
 def redo_log():
     if not os.path.isfile(direct + 'log.txt'): return
@@ -546,8 +587,11 @@ if (len(sys.argv) < 2):
 
 my_node = int(sys.argv[1])
 direct = "node_" + str(my_node) + "/"
+config_f = open(direct + "config.p", "rb")
+config = pickle.load(config_f)
+config_f.close()
 #config = pickle.load(open(direct + 'config.p','rb'))
-config = np.load(direct + "config.npy")
+#config = np.load(direct + "config.npy")
 # amount of vertices that can be added to this node
 capacity_left = config[0]
 seq_no = config[1]
@@ -556,17 +600,29 @@ nodes = config[3]
 ack_no = config[4]
 
 # data structures for graph
-v_set = pickle.load(open(direct + 'v_set.p','rb'))
+v_set_f = open(direct + "v_set.p", "rb")
+v_set = pickle.load(v_set_f)
+v_set_f.close()
 #v_to_v = pickle.load(open(direct + 'v_to_v.p','rb'))
 #v_to_node = pickle.load(open(direct + 'v_to_node.p','rb'))
 #v_set = np.load(direct + "v_set.npy")
-v_to_v = np.load(direct + "v_to_v.npy").item()
-v_to_node = np.load(direct + "v_to_node.npy").item()
+v_to_v_f = open(direct + "v_to_v.p", "rb")
+v_to_v = pickle.load(v_to_v_f)
+v_to_v_f.close()
+#v_to_v = np.load(direct + "v_to_v.npy").item()
+
+v_to_node_f = open(direct + "v_to_node.p", "rb")
+v_to_node = pickle.load(v_to_node_f)
+v_to_node_f.close()
+#v_to_node = np.load(direct + "v_to_node.npy").item()
 print_data_structures()
 
 # keep track of other node/ports
 #node_to_port = pickle.load(open(direct + 'node_to_port.p','rb'))
-node_to_port = np.load(direct + "node_to_port.npy").item()
+node_to_port_f = open(direct + "node_to_port.p", "rb")
+node_to_port = pickle.load(node_to_port_f)
+node_to_port_f.close()
+#node_to_port = np.load(direct + "node_to_port.npy").item()
 
 # catch node up to speed
 redo_log ()
