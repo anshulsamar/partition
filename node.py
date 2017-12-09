@@ -563,7 +563,7 @@ def run ():
 
     cur_instance = 1
     
-    for i in range(0,2):
+    for i in range(0,3):
         print_run("STARTING PAXOS #" + str(cur_instance))
         if not chosen(cur_instance):
             txn = suggest_transaction(my_node, v_set, v_to_v, v_to_node, node_to_capacity)
