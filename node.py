@@ -285,6 +285,7 @@ def parse_transaction(txn):
        VERTEXLISTTAG not in txn or \
        OLDNODETAG not in txn or \
        NEWNODETAG not in txn:
+        print("something terrible happened.....")
         return None
     
     # Get the vertex id
@@ -310,6 +311,27 @@ def parse_transaction(txn):
 
     return (vertex_id, vertex_list, sender_node, recv_node) 
 
+def log_transaction(this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
+    directory = "node_" + str(this_node) + "/"
+
+    v_set_f = open(directory + "v_set.p", "wb")
+    pickle.dump(vertex_set, v_set_f)
+    v_set_f.close()
+
+    # select only vertices on this node
+    v_to_v_f = open(directory + "v_to_v.p", "wb")
+    pickle.dump(this_v_to_v, v_to_v_f)
+    v_to_v_f.close()
+
+    # store v to node only for vertices node knows about
+    v_to_node_f = open(direct + "v_to_node.p", "wb")
+    pickle.dump(this_v_to_node, v_to_node_f)
+    v_to_node_f.close()
+
+    # keep track of the capacities at all the nodes
+    capacity_f = open(direct + "capacity.p", "wb")
+    pickle.dump(this_node_to_capacity, capacity_f)
+    capacity_f.close()
 
 def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
     if txn == "NONE":
@@ -332,6 +354,8 @@ def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node
     this_v_to_node[v] = recv_node
     this_node_to_capacity[snd_node] += 1
     this_node_to_capacity[recv_node] -= 1
+
+    log_transaction(this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity)
 
     print "Executed: " + txn
 
