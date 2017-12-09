@@ -63,11 +63,12 @@ class Proposal:
     def __ge__ (self, p2):
         return self == p2 or self > p2
 
-# paxos globals
+#me, nodes_set, node_to_v_map, edges_list) paxos globals
 cur_instance = -1
 proposer_proposal = Proposal()
 max_round = 1
-cur_min_proposal = None
+cua_min_proposal = None
+
 cur_accepted_proposal = Proposal()
 highest_accepted_proposal = None
 
@@ -416,6 +417,13 @@ def worker ():
     global cur_min_proposal, cur_accepted_proposal
     global highest_accepted_proposal
     global cur_instance
+
+    #local_proposer_proposal = proposer_proposal
+    #local_max_round = max_round
+    #local_cur_min_proposal = cur_min_proposal
+    #local_cur_accepted_proposal = cur_accepted_proposal
+    #local_highest_accepted_proposal = highest_accepted_proposal
+    #local_cur_instance = cur_instance 
     while True:
         worker_lock.acquire()
         data = get_message()
@@ -445,7 +453,7 @@ def worker ():
                                                       my_node)
                     send_to(send_data, proposal.node_id)
             
-        if is_prepare_reply(data):
+        elif is_prepare_reply(data):
             ret = parse_prepare_reply(data)
             # proposal that caused this reply
             sender = Proposal()
@@ -465,7 +473,7 @@ def worker ():
                     proposal.txn = highest_accepted_proposal.txn
                     proposer_sema[proposer_instance].release()
                     
-        if is_accept(data):
+        elif is_accept(data):
             proposal = Proposal()
             proposal.from_string(parse_accept(data))
             if proposal.instance > cur_instance:
@@ -481,7 +489,7 @@ def worker ():
                                                  my_node)
                 send_to(send_data, proposal.node_id)
 
-        if is_accept_reply (data):
+        elif is_accept_reply (data):
             ret = parse_accept_reply(data)
             # proposal that caused this reply
             sender = Proposal()
@@ -572,6 +580,7 @@ def get_wait_time():
         return float(txn_count)/len(transactions)        
     
 def run ():
+
     global cur_instance, my_node, v_set, v_to_v, v_to_node, node_to_capacity  
     worker_lock.acquire()
 
