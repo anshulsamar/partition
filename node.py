@@ -532,7 +532,7 @@ def worker ():
                     print_proposer("RCVD MAJORITY")
                     if max(accept_replies) > proposer_proposal:
                         print_proposer("REJECTED")
-                        max_round = max(accept_replies).round_num + 1
+                        proposer_proposal.max_round = max(accept_replies).round_num + 1
                     else:
                         print_proposer("VALUE CHOSEN.")
                         add_transaction(proposer_proposal)
@@ -544,8 +544,8 @@ def worker ():
 def proposer (instance, txn):
     global proposer_instance, proposer_proposal
     proposer_instance = instance
+    proposer_proposal = Proposal(instance, max_round, my_node, txn)        
     while not chosen(instance):
-        proposer_proposal = Proposal(instance, max_round, my_node, txn)
         print_proposer("SENDING PREPARE: " +
                        str(proposer_proposal))
         broadcast(prepare_message(proposer_proposal))
