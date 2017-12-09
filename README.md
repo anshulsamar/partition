@@ -2,6 +2,10 @@
 
 Decentralized Partitioning of Distributed Graph. 
 
+## todo
+
+pull in rpyc and simulation code in prototypes folder
+
 ## Getting Started
 
 Install graphviz

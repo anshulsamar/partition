@@ -41,14 +41,14 @@ class Proposal:
         self.txn = txn
         
     def __str__ (self):
-        return (str(self.instance) + "," + str(self.round_num) + "," +
-                str(self.node_id) + "," + self.txn)
+        return (str(self.instance) + "|" + str(self.round_num) + "|" +
+                str(self.node_id) + "|" + self.txn)
 
     def from_string (self, proposal_str):
-        self.instance = int(proposal_str.split(',')[0])
-        self.round_num = int(proposal_str.split(',')[1])
-        self.node_id = int(proposal_str.split(',')[2])
-        self.txn = proposal_str.split(',')[3]
+        self.instance = int(proposal_str.split('|')[0])
+        self.round_num = int(proposal_str.split('|')[1])
+        self.node_id = int(proposal_str.split('|')[2])
+        self.txn = proposal_str.split('|')[3]
 
     def __eq__ (self, p2):
         return (self.instance == p2.instance and
@@ -67,7 +67,7 @@ class Proposal:
 cur_instance = -1
 proposer_proposal = Proposal()
 max_round = 1
-cua_min_proposal = None
+cur_min_proposal = None
 
 cur_accepted_proposal = Proposal()
 highest_accepted_proposal = None
@@ -202,6 +202,7 @@ def parse_accept_reply (data):
 VERTEXTAG = "<VERTEX>"
 # This lists the vertices that are connected to the above vertex
 VERTEXLISTTAG = "<VERTEXEDGE>"
+VERTEXNODETAG = "<VERTEXNODE>"
 OLDNODETAG = "<OLDNODE>"
 NEWNODETAG = "<NEWNODE>"
 
@@ -247,12 +248,12 @@ def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, thi
 
     nodes = this_node_to_capacity.keys()
     txn_msg = "NONE"
-    print("suggest_transaction:")
-    print("this_node: " + str(this_node))
-    print("vertex_set: " + str(vertex_set))
-    print("this_v_to_v: " + str(this_v_to_v))
-    print("this_v_to_node: " + str(this_v_to_node))
-    print("this_node_to_capacity: " + str(this_node_to_capacity))
+    # print("suggest_transaction:")
+    # print("this_node: " + str(this_node))
+    # print("vertex_set: " + str(vertex_set))
+    # print("this_v_to_v: " + str(this_v_to_v))
+    # print("this_v_to_node: " + str(this_v_to_node))
+    # print("this_node_to_capacity: " + str(this_node_to_capacity))
     # need to make sure we have at least one vertex
     # to potentially transfer to another node
     if len(vertex_set) > 0:
@@ -274,8 +275,12 @@ def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, thi
 
         # check that the node we want to send this vertex to has capacity
         if diff > 0 and this_node_to_capacity[best_node] > 0:
+            # send neighbors and corresponding nodes
+            neighbors = this_v_to_v[v]
+            neighbor_nodes = [this_v_to_node[i] for i in neighbors]
             txn_msg = VERTEXTAG + str(v) + \
-                      VERTEXLISTTAG + str(list(this_v_to_v[v])) + \
+                      VERTEXLISTTAG + str(list(neighbors)) + \
+                      VERTEXNODETAG + str(list(neighbor_nodes)) + \
                       OLDNODETAG + str(this_node) + \
                       NEWNODETAG + str(best_node)        
     return txn_msg
@@ -284,6 +289,7 @@ def parse_transaction(txn):
 
     if VERTEXTAG not in txn or \
        VERTEXLISTTAG not in txn or \
+       VERTEXNODETAG not in txn or \
        OLDNODETAG not in txn or \
        NEWNODETAG not in txn:
         print("something terrible happened.....")
@@ -296,11 +302,19 @@ def parse_transaction(txn):
 
     # Get the vertices that were connected to the above vertex
     vertex_list_first = txn.find(VERTEXLISTTAG) + len(VERTEXLISTTAG)
-    vertex_list_last = txn.find(OLDNODETAG)
+    vertex_list_last = txn.find(VERTEXNODETAG)
     vertex_list_str = txn[vertex_list_first:vertex_list_last]
     print("vertex_list: " + vertex_list_str)
-    vertex_list = set(ast.literal_eval(vertex_list_str))
+    vertex_list = list(ast.literal_eval(vertex_list_str))
 
+    # Get the nodes that those vertices are on
+    vertex_node_list_first = txn.find(VERTEXNODETAG) + \
+                             len(VERTEXNODETAG)
+    vertex_node_list_last = txn.find(OLDNODETAG)
+    vertex_node_list_str = txn[vertex_node_list_first:vertex_node_list_last]
+    print("vertex_node_list: " + vertex_node_list_str)
+    vertex_node_list = list(ast.literal_eval(vertex_node_list_str))
+    
     # Get the sender node id
     sender_first = txn.find(OLDNODETAG) + len(OLDNODETAG)
     sender_last = txn.find(NEWNODETAG)
@@ -310,7 +324,7 @@ def parse_transaction(txn):
     recv_first = txn.find(NEWNODETAG) + len(NEWNODETAG)
     recv_node = int(txn[recv_first:])
 
-    return (vertex_id, vertex_list, sender_node, recv_node) 
+    return (vertex_id, vertex_list, vertex_node_list, sender_node, recv_node) 
 
 def log_transaction(this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
     directory = "node_" + str(this_node) + "/"
@@ -343,11 +357,12 @@ def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node
     if res is None:
         return (vertex_set, this_v_to_node, this_node_to_capacity)
 
-    (v, edge_list, snd_node, recv_node) = res
+    (v, edge_list, vertex_node_list, snd_node, recv_node) = res
 
     # Make the updates to the local data structures
     if snd_node == this_node:
-        vertex_set.remove(v)
+        vertex_set.remove(v) #note we are still keeping stale data for
+        #its neighbors that we didn't remove
     elif recv_node == this_node:
         vertex_set.add(v)
 
@@ -355,6 +370,11 @@ def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node
     this_v_to_node[v] = recv_node
     this_node_to_capacity[snd_node] += 1
     this_node_to_capacity[recv_node] -= 1
+    for i in range(0,len(edge_list)):
+        if edge_list[i] in this_v_to_node:
+            if this_v_to_node[edge_list[i]] != vertex_node_list[i]:
+                print "Somethings fishy"
+        this_v_to_node[edge_list[i]] = vertex_node_list[i]
 
     log_transaction(this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity)
 
@@ -383,6 +403,7 @@ def print_graph_structures():
     print("vertex to node map: " + str(v_to_node))
     print("vertex to vertex list map: " + str(v_to_v))
     print("node to capacity map: " + str(node_to_capacity))
+
 #################### COMMAND CONTROL ####################
     
 def server ():     
@@ -452,6 +473,8 @@ def worker ():
                                                       cur_accepted_proposal,
                                                       my_node)
                     send_to(send_data, proposal.node_id)
+                else:
+                    print_acceptor("MSG IGNORED")
             
         elif is_prepare_reply(data):
             ret = parse_prepare_reply(data)
@@ -509,6 +532,7 @@ def worker ():
                     print_proposer("RCVD MAJORITY")
                     if max(accept_replies) > proposer_proposal:
                         print_proposer("REJECTED")
+                        max_round = max(accept_replies).round_num + 1
                     else:
                         print_proposer("VALUE CHOSEN.")
                         add_transaction(proposer_proposal)
@@ -584,11 +608,6 @@ def run ():
     global cur_instance, my_node, v_set, v_to_v, v_to_node, node_to_capacity  
     worker_lock.acquire()
 
-    # start accepting messages
-    s = threading.Thread(target=server)
-    s.daemon = True
-    s.start()
-
     # worker reads messages (currently locked)
     m = threading.Thread(target=worker)
     m.daemon = True
@@ -596,7 +615,7 @@ def run ():
 
     cur_instance = 1
     
-    for i in range(0,3):
+    for i in range(0,2):
         print_run("STARTING PAXOS #" + str(cur_instance))
         if not chosen(cur_instance):
             txn = suggest_transaction(my_node, v_set, v_to_v, v_to_node, node_to_capacity)
@@ -630,6 +649,10 @@ def run ():
 
 print "Starting"
 setup()
+# start accepting messages
+s = threading.Thread(target=server)
+s.daemon = True
+s.start()
 # sleep until all nodes are up
-sleep(2*(len(nodes) - my_node))
+sleep(2*(len(nodes)))
 run()
