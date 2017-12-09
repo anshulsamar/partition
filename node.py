@@ -274,7 +274,7 @@ def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, thi
         # check that the node we want to send this vertex to has capacity
         if diff > 0 and this_node_to_capacity[best_node] > 0:
             txn_msg = VERTEXTAG + str(v) + \
-                      VERTEXLISTTAG + str(this_v_to_v[v]) + \
+                      VERTEXLISTTAG + str(list(this_v_to_v[v])) + \
                       OLDNODETAG + str(this_node) + \
                       NEWNODETAG + str(best_node)        
     return txn_msg
@@ -296,6 +296,7 @@ def parse_transaction(txn):
     vertex_list_first = txn.find(VERTEXLISTTAG) + len(VERTEXLISTTAG)
     vertex_list_last = txn.find(OLDNODETAG)
     vertex_list_str = txn[vertex_list_first:vertex_list_last]
+    print("vertex_list: " + vertex_list_str)
     vertex_list = set(ast.literal_eval(vertex_list_str))
 
     # Get the sender node id
@@ -307,7 +308,7 @@ def parse_transaction(txn):
     recv_first = txn.find(NEWNODETAG) + len(NEWNODETAG)
     recv_node = int(txn[recv_first:])
 
-    return (vertex_id, sender_node, recv_node) 
+    return (vertex_id, vertex_list, sender_node, recv_node) 
 
 
 def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
@@ -319,7 +320,7 @@ def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node
     if res is None:
         return (vertex_set, this_v_to_node, this_node_to_capacity)
 
-    (v, snd_node, recv_node) = res
+    (v, edge_list, snd_node, recv_node) = res
 
     # Make the updates to the local data structures
     if snd_node == this_node:
@@ -327,8 +328,7 @@ def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node
     elif recv_node == this_node:
         vertex_set.add(v)
 
-    this_v_to_v[v]
-
+    this_v_to_v[v] = edge_list
     this_v_to_node[v] = recv_node
     this_node_to_capacity[snd_node] += 1
     this_node_to_capacity[recv_node] -= 1
@@ -588,7 +588,7 @@ def run ():
         txn = get_transaction(cur_instance)
         print("Before:")
         print_graph_structures()
-        (v_set, v_to_node, node_to_capacity) = execute_transaction (txn, my_node, v_set, v_to_node, node_to_capacity)
+        (v_set, v_to_node, node_to_capacity) = execute_transaction (txn, my_node, v_set, v_to_v, v_to_node, node_to_capacity)
         print("After:")
         print_graph_structures()
         #execute_transaction(txn)
