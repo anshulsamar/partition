@@ -220,9 +220,10 @@ def add_transaction (p):
 
 def get_transaction (instance):
     t_lock.acquire()
+    node_id = transactions[instance][0]
     txn = transactions[instance][1]
     t_lock.release()
-    return txn
+    return node_id, txn
 
 def chosen (instance):
     t_lock.acquire()
@@ -351,7 +352,6 @@ def log_transaction(this_node, vertex_set, this_v_to_v, this_v_to_node, this_nod
 
 def execute_transaction (txn, this_node, vertex_set, this_v_to_v,
                          this_v_to_node, this_node_to_capacity):
-    print "Executing: " + txn
     if txn == "NONE":
         return (vertex_set, this_v_to_node, this_node_to_capacity)
     
@@ -391,10 +391,12 @@ def print_run(x):
     print x
 
 def print_proposer (x):
-    print colored("\t" + x, "blue")
+    return
+    #print colored("\t" + x, "blue")
 
 def print_acceptor (x):
-    print colored("\t\t" + x, "cyan")
+    return
+    #print colored("\t\t" + x, "cyan")
 
 def print_graph_structures():
     global my_node, v_set, v_to_node, v_to_v, node_to_capacity
@@ -498,7 +500,6 @@ def worker ():
                 if num_prepare_replies() == len(nodes)/2 + 1:
                     print_proposer("RCVD PREPARE MAJORITY")
                     highest_accepted_proposal = max(prepare_replies)
-                    print("Highest accepted prop: " + str(highest_accepted_proposal))
                     if highest_accepted_proposal.round_num != -1:
                         proposer_proposal.txn = highest_accepted_proposal.txn
                     clear_prepare_replies()
@@ -512,7 +513,8 @@ def worker ():
             else:
                 print_acceptor("ACCEPT_MSG: " + str(proposal))
             if proposal.instance == cur_instance:
-                if proposal >= cur_min_proposal:
+                if (cur_min_proposal is None or proposal >=
+                    cur_min_proposal):
                     cur_accepted_proposal = proposal
                     cur_min_proposal = proposal
                 else:
@@ -625,7 +627,7 @@ def run ():
 
     cur_instance = 1
     
-    for i in range(0,2):
+    for i in range(0,5):
         print_run("STARTING PAXOS #" + str(cur_instance))
         if not chosen(cur_instance):
             txn = suggest_transaction(my_node, v_set, v_to_v, v_to_node, node_to_capacity)
@@ -647,8 +649,8 @@ def run ():
             worker_lock.acquire()
             # refresh paxos state
             refresh()
-        txn = get_transaction(cur_instance)
-        #print "Executing: " + txn
+        node_id, txn = get_transaction(cur_instance)
+        print "Executing: " + txn + " from Node #" + str(node_id)
         #print("Before:")
         #print_graph_structures()
         (v_set, v_to_node, node_to_capacity) = execute_transaction (txn, my_node, v_set, v_to_v, v_to_node, node_to_capacity)
