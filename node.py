@@ -246,6 +246,7 @@ def out_in (v, v_to_node_map, v_to_v_map):
 
 def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
 
+    # return "TXN_" + str(my_node)
     nodes = this_node_to_capacity.keys()
     txn_msg = "NONE"
     # print("suggest_transaction:")
@@ -348,7 +349,9 @@ def log_transaction(this_node, vertex_set, this_v_to_v, this_v_to_node, this_nod
     pickle.dump(this_node_to_capacity, capacity_f)
     capacity_f.close()
 
-def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
+def execute_transaction (txn, this_node, vertex_set, this_v_to_v,
+                         this_v_to_node, this_node_to_capacity):
+    print "Executing: " + txn
     if txn == "NONE":
         return (vertex_set, this_v_to_node, this_node_to_capacity)
     
@@ -381,10 +384,7 @@ def execute_transaction (txn, this_node, vertex_set, this_v_to_v, this_v_to_node
     print "Executed: " + txn
 
     return (vertex_set, this_v_to_node, this_node_to_capacity)
-'''
-def execute_transaction (txn):
-    print "Executed: " + txn
-'''
+
 #################### PRINT HELPER ####################
 
 def print_run(x):
@@ -452,9 +452,13 @@ def worker ():
         if is_chosen(data):
             chosen_proposal = Proposal()
             chosen_proposal.from_string(parse_chosen(data))
-            add_transaction(chosen_proposal)
-            proposer_sema[cur_instance].release()
-            print_proposer("RCVD CHOSEN MESSAGE")
+            # push off future instance until we decide this one
+            if chosen_proposal.instance > cur_instance:
+                add_message(0, data)
+            else:
+                add_transaction(chosen_proposal)
+                proposer_sema[cur_instance].release()
+                print_proposer("RCVD CHOSEN MESSAGE")
 
         # prepare message received by acceptor
         if is_prepare(data):
@@ -492,8 +496,12 @@ def worker ():
                                str(acceptor_id) + " :" + str(accepted))
                 add_prepare_reply(accepted)
                 if num_prepare_replies() == len(nodes)/2 + 1:
+                    print_proposer("RCVD PREPARE MAJORITY")
                     highest_accepted_proposal = max(prepare_replies)
-                    proposal.txn = highest_accepted_proposal.txn
+                    print("Highest accepted prop: " + str(highest_accepted_proposal))
+                    if highest_accepted_proposal.round_num != -1:
+                        proposer_proposal.txn = highest_accepted_proposal.txn
+                    clear_prepare_replies()
                     proposer_sema[proposer_instance].release()
                     
         elif is_accept(data):
@@ -507,6 +515,8 @@ def worker ():
                 if proposal >= cur_min_proposal:
                     cur_accepted_proposal = proposal
                     cur_min_proposal = proposal
+                else:
+                    print_acceptor("Proposal too low")
                 send_data = accept_reply_message(proposal,
                                                  cur_min_proposal,
                                                  my_node)
@@ -529,14 +539,15 @@ def worker ():
                                str(min_proposal))
                 add_accept_reply(min_proposal)
                 if num_accept_replies() == len(nodes)/2 + 1:
-                    print_proposer("RCVD MAJORITY")
+                    print_proposer("RCVD ACCEPT MAJORITY")
                     if max(accept_replies) > proposer_proposal:
                         print_proposer("REJECTED")
-                        proposer_proposal.max_round = max(accept_replies).round_num + 1
+                        proposer_proposal.round_num = max(accept_replies).round_num + 1
                     else:
                         print_proposer("VALUE CHOSEN.")
                         add_transaction(proposer_proposal)
                         broadcast(chosen_message(proposer_proposal))
+                    clear_accept_replies()
                     proposer_sema[proposer_instance].release()
         worker_lock.release()
 
@@ -554,7 +565,6 @@ def proposer (instance, txn):
         print_proposer("SENDING ACCEPT: " + str(proposer_proposal))
         broadcast(accept_message(proposer_proposal))
         proposer_sema[instance].acquire()
-
     print_proposer("PROPOSER FINISHED INSTANCE: " + str(instance))
     return
 
@@ -638,12 +648,12 @@ def run ():
             # refresh paxos state
             refresh()
         txn = get_transaction(cur_instance)
-        print("Before:")
-        print_graph_structures()
+        #print "Executing: " + txn
+        #print("Before:")
+        #print_graph_structures()
         (v_set, v_to_node, node_to_capacity) = execute_transaction (txn, my_node, v_set, v_to_v, v_to_node, node_to_capacity)
-        print("After:")
-        print_graph_structures()
-        #execute_transaction(txn)
+        #print("After:")
+        #print_graph_structures()
         cur_instance += 1
     print "done."
 

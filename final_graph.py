@@ -36,13 +36,13 @@ def print_graph (fname, nodes_set, node_to_v_map, edges_list):
     g.render(fname)
 
 if (len(sys.argv) < 3):
-    print("USAGE: python final_graph.py [#nodes] [edges_file]")
+    print("USAGE: python final_graph.py [#nodes] [dir]")
     exit()
 
 N = int(sys.argv[1])                    # max nodes
 nodes = set(range(0,N))                 # node identifiers
 
-edges_file = sys.argv[2]
+edges_file = sys.argv[2] + "/edges.txt"
 edges = set()                           # edge_list
 
 edges = read_edges(edges_file, edges)
@@ -59,4 +59,4 @@ for node in nodes:
 
 print("node_to_v: " + str(node_to_v))
 
-print_graph ("final_config", nodes, node_to_v, edges)
+print_graph (sys.argv[2] + "/final_config", nodes, node_to_v, edges)

@@ -13,7 +13,8 @@ def clean_dirs(nodes_set):
             shutil.rmtree(direct)
 
 # Read in vertex list and populate nodes
-def read_vertices(filename, nodes_set, node_to_capacity_map, v_to_node_map, node_to_v_map, v_to_v_map):
+def read_vertices_rand(filename, nodes_set, node_to_capacity_map,
+                  v_to_node_map, node_to_v_map, v_to_v_map):
     with open(filename, 'rb') as f:
         for line in f:
             v = int(line)
@@ -23,6 +24,21 @@ def read_vertices(filename, nodes_set, node_to_capacity_map, v_to_node_map, node
                     print "Error: No space in nodes"
                     exit()
                 node = random.choice(space)
+                v_to_node_map[v] = node
+                node_to_v_map[node].add(v)
+                node_to_capacity_map[node] -= 1
+                v_to_v_map[v] = set()
+
+    return (node_to_capacity_map, v_to_node_map, node_to_v_map, v_to_v_map)
+    #np.save("master_v_to_node.npy", v_to_node)
+
+def read_vertices_det(filename, nodes_set, node_to_capacity_map,
+                  v_to_node_map, node_to_v_map, v_to_v_map):
+    with open(filename, 'rb') as f:
+        for line in f:
+            v = int(line.split(',')[0])
+            node = int(line.split(',')[1])
+            if v not in v_to_node_map:                
                 v_to_node_map[v] = node
                 node_to_v_map[node].add(v)
                 node_to_capacity_map[node] -= 1
@@ -115,7 +131,7 @@ def create_nodes(nodes_set, node_to_port_map, node_to_v_map, v_to_v_map, v_to_no
 
 
 if (len(sys.argv) < 5):
-    print("USAGE: python run.py [#nodes] [capacity] [vertices_file] [edges_file]")
+    print("USAGE: python run.py [#nodes] [capacity] [-r/-d] [dir]")
     exit()
 
 # Redundant data structures for easy access
@@ -130,8 +146,9 @@ v_to_v = {}                             # vertex-vertex map
 edges = set()                           # edge_list
 capacity = {}                           # remaining capacity
 
-vertices_file = sys.argv[3]
-edges_file = sys.argv[4]
+random_assign = (sys.argv[3] == "-r")
+vertices_file = sys.argv[4] + "/vertices.txt"
+edges_file = sys.argv[4] + "/edges.txt"
 # Initialize nodes
 for i in nodes:
     node_to_v[i] = set()
@@ -139,9 +156,15 @@ for i in nodes:
     node_to_port[i] = 10000 + i
 
 clean_dirs(nodes)
-(capacity, v_to_node, node_to_v, v_to_v) = read_vertices(vertices_file, nodes, \
-                                                         capacity, v_to_node, node_to_v, \
-                                                         v_to_v)
+if random_assign:
+    (capacity, v_to_node, node_to_v, v_to_v) = read_vertices_random (vertices_file, nodes, \
+                                                                     capacity, v_to_node, node_to_v, \
+                                                                     v_to_v)
+else:
+    (capacity, v_to_node, node_to_v, v_to_v) = read_vertices_det (vertices_file, nodes, \
+                                                             capacity, v_to_node, node_to_v, \
+                                                             v_to_v)
+
 (v_to_v, edges) = read_edges(edges_file, v_to_v, edges)
-print_graph('starting_config', nodes, node_to_v, edges)
+print_graph(sys.argv[4] + '/starting_config', nodes, node_to_v, edges)
 create_nodes(nodes, node_to_port, node_to_v, v_to_v, v_to_node, capacity)
