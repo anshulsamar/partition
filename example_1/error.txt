@@ -1,0 +1,35 @@
+Starting
+STARTING PAXOS #1
+Waiting 0 before proposing
+		PREPARE_MSG: 1|1|0|NONE
+	SENDING PREPARE: 1|1|2|<VERTEX>5<VERTEXEDGE>[2, 4]<VERTEXNODE>[0, 1]<OLDNODE>2<NEWNODE>0
+		PREPARE_MSG: 1|1|1|NONE
+		ACCEPT_MSG: 1|1|0|NONE
+		Proposal too low
+		PREPARE_MSG: 1|2|0|NONE
+		ACCEPT_MSG: 1|1|1|NONE
+		Proposal too low
+		ACCEPT_MSG: 1|2|0|NONE
+		PREPARE_MSG: 1|3|1|NONE
+	RCVD CHOSEN MESSAGE
+		ACCEPT_MSG: 1|3|1|NONE
+		PREPARE_MSG: 1|1|2|<VERTEX>5<VERTEXEDGE>[2, 4]<VERTEXNODE>[0, 1]<OLDNODE>2<NEWNODE>0
+		MSG IGNORED
+Executing: NONE
+STARTING PAXOS #2
+Waiting 0.0 before proposing
+ 		ACCEPT_MSG: 2|1|1|NONE
+	SENDING PREPARE: 2|1|2|<VERTEX>5<VERTEXEDGE>[2, 4]<VERTEXNODE>[0, 1]<OLDNODE>2<NEWNODE>0
+Exception in thread Thread-2:
+Traceback (most recent call last):
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/threading.py", line 808, in __bootstrap_inner
+    self.run()
+  File "/System/Library/Frameworks/Python.framework/Versions/2.7/lib/python2.7/threading.py", line 761, in run
+    self.__target(*self.__args, **self.__kwargs)
+  File "node.py", line 515, in worker
+    if proposal >= cur_min_proposal:
+  File "node.py", line 64, in __ge__
+    return self == p2 or self > p2
+  File "node.py", line 54, in __eq__
+    return (self.instance == p2.instance and
+AttributeError: 'NoneType' object has no attribute 'instance'
