@@ -15,6 +15,7 @@ import ast
 # message store
 message_buf = []
 accept_replies = []
+accept_replies_nodes = []
 prepare_replies = []
 
 # globals
@@ -112,12 +113,39 @@ def clear_prepare_replies ():
 def clear_accept_replies ():
     global accept_replies
     accept_replies = []
+
+def clear_accept_replies_nodes ():
+    global accept_replies_nodes
+    accept_replies_nodes = []
     
 def add_accept_reply (p):
+    global accept_replies
     accept_replies.append(p)
+
+def add_accept_replies_nodes (n):
+    global accept_replies_nodes
+    accept_replies_nodes.append(n)
 
 def num_accept_replies ():
     return len(accept_replies)
+
+def check_accept_replies_nodes (node1, node2):
+    '''
+        Check that the accept replies came from both nodes
+        at least
+    '''
+    print("we want to find: " + str(node1) + " and " + str(node2))
+    found_node_1 = False
+    found_node_2 = False
+    for node in accept_replies_nodes:
+        if int(node) == node1:
+            found_node_1 = True
+        elif int(node) == node2:
+            found_node_2 = True
+
+        print("reply: " + str(node))
+
+    return (found_node_1 and found_node_2)
 
 def send_to (send_data, node_id):
     if node_id == my_node:
@@ -541,15 +569,16 @@ def worker ():
                     print_proposer("RCVD PREPARE MAJORITY")
                     highest_accepted_proposal = max(prepare_replies)
 
-                    '''
+                    start = time.time()
+
                     this_txn = highest_accepted_proposal.txn
                     if (type(this_txn).__name__ == "str"):
-                        print(this_txn)
+                        print("tada: " + this_txn)
                         res = get_nodes_from_transaction(this_txn)
                         if res != None:
                             (sndr_node, recvr_node) = res
                             print(check_prepare_replies_nodes (sndr_node, recvr_node))
-                    '''
+                    
                     if highest_accepted_proposal.round_num != -1:
                         proposer_proposal.txn = highest_accepted_proposal.txn
                     clear_prepare_replies()
@@ -572,6 +601,7 @@ def worker ():
                 send_data = accept_reply_message(proposal,
                                                  cur_min_proposal,
                                                  my_node)
+                print("Sending: " + str(send_data) + " from node: " + str(my_node))
                 send_to(send_data, proposal.node_id)
 
         elif is_accept_reply (data):
@@ -590,13 +620,28 @@ def worker ():
                                str(acceptor_id) + ": " +
                                str(min_proposal))
                 add_accept_reply(min_proposal)
+                add_accept_replies_nodes(acceptor_id)
                 if num_accept_replies() == len(nodes)/2 + 1:
                     print_proposer("RCVD ACCEPT MAJORITY")
+
+                    start = time.time()
+
+                    this_txn = proposer_proposal.txn
+                    if (type(this_txn).__name__ == "str"):
+                        print("tada: " + this_txn)
+                        res = get_nodes_from_transaction(this_txn)
+                        if res != None:
+                            (sndr_node, recvr_node) = res
+                            print(check_accept_replies_nodes (sndr_node, recvr_node))
+                    print("max of accept_replies is: " + str(max(accept_replies)))
+
                     if max(accept_replies) > proposer_proposal:
                         print_proposer("REJECTED")
                         proposer_proposal.round_num = max(accept_replies).round_num + 1
                     else:
                         print_proposer("VALUE CHOSEN.")
+
+                        print("lakers: " + str(proposer_proposal))
                         add_transaction(proposer_proposal)
                         broadcast(chosen_message(proposer_proposal))
                     clear_accept_replies()
