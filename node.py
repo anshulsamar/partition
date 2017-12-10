@@ -624,16 +624,15 @@ def worker ():
                 if num_accept_replies() == len(nodes)/2 + 1:
                     print_proposer("RCVD ACCEPT MAJORITY")
 
-                    start = time.time()
+                    #start = time.time()
 
                     this_txn = proposer_proposal.txn
                     if (type(this_txn).__name__ == "str"):
-                        print("tada: " + this_txn)
                         res = get_nodes_from_transaction(this_txn)
                         if res != None:
                             (sndr_node, recvr_node) = res
-                            print(check_accept_replies_nodes (sndr_node, recvr_node))
-                    print("max of accept_replies is: " + str(max(accept_replies)))
+                            if check_accept_replies_nodes (sndr_node, recvr_node) is False:
+                                proposer_proposal.txn = "NONE"
 
                     if max(accept_replies) > proposer_proposal:
                         print_proposer("REJECTED")
