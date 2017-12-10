@@ -28,5 +28,7 @@ for i in range(0,num_nodes):
     threads[i].join()
 
 final_edge_out = subprocess.check_output(["python","final_graph.py",str(num_nodes),directory])
-print((float(starting_edge_out)-float(final_edge_out))/float(starting_edge_out))
+percentage = (float(starting_edge_out)-float(final_edge_out))/float(starting_edge_out)
+print percentage
+
 
