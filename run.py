@@ -165,6 +165,43 @@ else:
                                                              capacity, v_to_node, node_to_v, \
                                                              v_to_v)
 
+
+   
 (v_to_v, edges) = read_edges(edges_file, v_to_v, edges)
+
+
+def out_in (v):
+    node = v_to_node[v]
+    out_n = set()
+    in_n = set()
+    for vi in v_to_v[v]:
+        if v_to_node[vi] == node:
+            in_n.add(vi)
+        else:
+            out_n.add(vi)
+    return out_n, in_n
+
+total_out_edges = 0
+for node in nodes:
+    vertices = node_to_v[node]
+    if len(vertices) == 0: continue
+    # total edges within node
+    in_edges = 0
+    # total edges leaving node
+    out_edges = 0
+    for v in vertices:
+        out_n, in_n = out_in(v)
+        v_out_node = len(out_n)
+        v_in_node = len(in_n)
+        # update edge counts
+        in_edges = in_edges + v_in_node
+        out_edges = out_edges + v_out_node
+        
+    #print "Node: " + str(node)
+    #print "\tout edges: " + str(out_edges)
+    #print "\tin edges: " + str(in_edges)        
+    total_out_edges += out_edges
+
+print float(total_out_edges)/2
 print_graph(sys.argv[4] + '/starting_config', nodes, node_to_v, edges)
 create_nodes(nodes, node_to_port, node_to_v, v_to_v, v_to_node, capacity)
