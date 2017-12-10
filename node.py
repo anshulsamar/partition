@@ -307,7 +307,7 @@ def suggest_transaction ():
 
     if len(v_set) > 0:
         v = random.choice(list(v_set))
-
+        print("Trying vertex " + str(v))
         # out and in neighbors
         out_n, in_n = out_in(v, v_to_node, v_to_v)
         # out edges by node
@@ -325,11 +325,12 @@ def suggest_transaction ():
         diff = out_counts[best_node] - len(in_n)
 
         # check that the node we want to send this vertex to has capacity
-        if diff > 0 and node_to_capacity[best_node] > 0:
-            # send neighbors and corresponding nodes
-            neighbors = v_to_v[v]
-            neighbor_nodes = [v_to_node[i] for i in neighbors]
-            txn = Transaction(v, my_node, best_node, neighbors, neighbor_nodes)
+        if diff >= 0:
+            if node_to_capacity[best_node] > 0:
+                # send neighbors and corresponding nodes
+                neighbors = v_to_v[v]
+                neighbor_nodes = [v_to_node[i] for i in neighbors]
+                txn = Transaction(v, my_node, best_node, neighbors, neighbor_nodes)
 
     return txn
 
@@ -622,7 +623,7 @@ def run ():
 
     cur_instance = 1
     
-    for i in range(0,40):
+    for i in range(0,int(sys.argv[2])):
         print_run("STARTING PAXOS #" + str(cur_instance))
         if not chosen(cur_instance):
             txn = suggest_transaction()
@@ -653,6 +654,10 @@ def run ():
         cur_instance += 1
     print "done."
 
+if len(sys.argv) < 3:
+    print("python node.py [node_id] [paxos_round]")
+    exit(1)
+    
 print "Starting"
 setup()
 # start accepting messages
