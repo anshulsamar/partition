@@ -63,6 +63,9 @@ class Proposal:
     def __ge__ (self, p2):
         return self == p2 or self > p2
 
+    def update_transaction(self, txn):
+        self.txn = txn
+
 #me, nodes_set, node_to_v_map, edges_list) paxos globals
 cur_instance = -1
 proposer_proposal = Proposal()
@@ -84,6 +87,23 @@ def add_prepare_reply (proposal):
 
 def num_prepare_replies ():
     return len(prepare_replies)
+
+def check_prepare_replies_nodes (node1, node2):
+    '''
+        Check that the prepare replies came from both nodes
+        at least
+    '''
+    found_node_1 = False
+    found_node_2 = False
+    for reply in prepare_replies:
+        if reply.node_id == node1:
+            found_node_1 = True
+        elif reply.node_id == node2:
+            found_node_2 = True
+
+        print("reply: " + str(reply))
+
+    return (found_node_1 and found_node_2)
 
 def clear_prepare_replies ():
     global prepare_replies
@@ -287,6 +307,26 @@ def suggest_transaction (this_node, vertex_set, this_v_to_v, this_v_to_node, thi
                       NEWNODETAG + str(best_node)        
     return txn_msg
 
+def get_nodes_from_transaction(txn):
+
+    if VERTEXTAG not in txn or \
+       VERTEXLISTTAG not in txn or \
+       VERTEXNODETAG not in txn or \
+       OLDNODETAG not in txn or \
+       NEWNODETAG not in txn:
+        return None
+
+    # Get the sender node id
+    sender_first = txn.find(OLDNODETAG) + len(OLDNODETAG)
+    sender_last = txn.find(NEWNODETAG)
+    sender_node = int(txn[sender_first:sender_last])
+
+    # Get the recipient node id
+    recv_first = txn.find(NEWNODETAG) + len(NEWNODETAG)
+    recv_node = int(txn[recv_first:])
+
+    return (sender_node, recv_node)     
+
 def parse_transaction(txn):
 
     if VERTEXTAG not in txn or \
@@ -294,7 +334,7 @@ def parse_transaction(txn):
        VERTEXNODETAG not in txn or \
        OLDNODETAG not in txn or \
        NEWNODETAG not in txn:
-        print("something terrible happened.....")
+        #print("something terrible happened.....")
         return None
     
     # Get the vertex id
@@ -500,6 +540,16 @@ def worker ():
                 if num_prepare_replies() == len(nodes)/2 + 1:
                     print_proposer("RCVD PREPARE MAJORITY")
                     highest_accepted_proposal = max(prepare_replies)
+
+                    '''
+                    this_txn = highest_accepted_proposal.txn
+                    if (type(this_txn).__name__ == "str"):
+                        print(this_txn)
+                        res = get_nodes_from_transaction(this_txn)
+                        if res != None:
+                            (sndr_node, recvr_node) = res
+                            print(check_prepare_replies_nodes (sndr_node, recvr_node))
+                    '''
                     if highest_accepted_proposal.round_num != -1:
                         proposer_proposal.txn = highest_accepted_proposal.txn
                     clear_prepare_replies()
@@ -627,7 +677,7 @@ def run ():
 
     cur_instance = 1
     
-    for i in range(0,5):
+    for i in range(0,10):
         print_run("STARTING PAXOS #" + str(cur_instance))
         if not chosen(cur_instance):
             txn = suggest_transaction(my_node, v_set, v_to_v, v_to_node, node_to_capacity)
