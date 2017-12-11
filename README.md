@@ -7,13 +7,19 @@ the need of a master. To reduce project scope and avoid logging and retransmissi
 live and that messages are eventually delivered. This project was done
 for CS244B (Distributed Systems) and CS224W (Analysis of Networks). 
 
-node.py: node server implementation, basic paxos  
+node.py: node server implementation, basic paxos
+
 setup.py: set up directories and starting config
-gather.py: print final network configuration
-run_script.py: auto run repartitioning system
-exp.py: run erdos renyi, pref attachment experiments
-prototype/simulation.py: repartitioning simulation used in prototyping
-prototype/rpyc/: rpyc module used in prototyping
+
+gather.py: print final network configuration   
+
+run_script.py: auto run repartitioning system   
+
+exp.py: run erdos renyi, pref attachment experiments   
+
+prototype/simulation.py: repartitioning simulation used in prototyping  
+
+prototype/rpyc/: rpyc module used in prototyping  
 
 ## Getting Started
 
@@ -33,10 +39,10 @@ vertex.txt
 
 And an edge file looks like:
 
-edges.txt
-//endpoint_1,endpoint_2
-1,2
-3,4
+edges.txt  
+//endpoint_1,endpoint_2  
+1,2  
+3,4  
 
 To run pass the directory into the following command:
 
@@ -52,7 +58,7 @@ describing the vertices they contain.
 
 ## Acknowledgements
 
-Thanks to David Mazieres, Jure Lescovec, Peter Bailis, Michael Chang, and
-Seo Jin Park for helpful conversations. 
+Thanks to David Mazieres, Jure Lescovec, Peter Bailis, Seo Jin Park,
+Anunay Kulshrestha, and Michael Chang for helpful conversations. 
 
 
