@@ -656,7 +656,7 @@ def run ():
     print "done."
 
 if len(sys.argv) < 3:
-    print("python node.py [node_id] [paxos_round]")
+    print("USAGE: python paxos.py [node_id] [paxos_round]")
     exit(1)
     
 print "Starting"

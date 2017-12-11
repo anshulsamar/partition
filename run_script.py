@@ -18,7 +18,7 @@ starting_edge_out = subprocess.check_output(["python","setup.py",str(num_nodes),
 
 # run paxos
 def run (node_id, paxos_rounds):
-    output = subprocess.check_output(["python","node.py",str(node_id),str(paxos_rounds)])
+    output = subprocess.check_output(["python","paxos.py",str(node_id),str(paxos_rounds)])
     return
 
 threads = []

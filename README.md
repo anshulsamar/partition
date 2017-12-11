@@ -7,7 +7,7 @@ the need of a master. To reduce project scope and avoid logging and retransmissi
 live and that messages are eventually delivered. This project was done
 for CS244B (Distributed Systems) and CS224W (Analysis of Networks). 
 
-node.py: node server implementation, basic paxos
+paxos.py: node server implementation, basic paxos
 
 setup.py: set up directories and starting config
 

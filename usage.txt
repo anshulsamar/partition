@@ -2,13 +2,13 @@ Running Individual Components
 
 After making the directory like above, run:
 ```
-python run.py [#nodes] [max_capacity] -d [dir]
+python setup.py [#nodes] [max_capacity] -d [dir]
 ```
 to create folders for each node.
 
 Run
 ```
-python node.py [node_id] [paxos_round]
+python paxos.py [node_id] [paxos_round]
 ```
 
 multiple times for each node in the system. Do them in succession -
@@ -18,7 +18,7 @@ time (it sleeps for a bit to give enough time for this).
 When the specified number of paxos rounds finish, use:
 
 ```
-python final_graph.py [#nodes] [dir]
+python gather.py [#nodes] [dir]
 ```
 
 to print out the final configuration and the number of inter-node
