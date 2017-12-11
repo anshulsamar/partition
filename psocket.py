@@ -18,7 +18,6 @@ class psocket:
         if blocking == False:
             self.sock.setblocking(0)
 
-
     def pconnect(self, host, port):
         self.sock.connect((host, port))
 

@@ -3,6 +3,7 @@ import random
 import subprocess
 import os
 import shutil
+import time
 
 name = "erdos_renyi"
 if os.path.exists(name + "/"):
@@ -10,17 +11,26 @@ if os.path.exists(name + "/"):
 os.makedirs(name + "")
 edges_file = name + "/edges.txt"
 vertices_file = name + "/vertices.txt"
-num_tries = 1
-N = 5
-capacity = 7
-nodes = range(0,N)
-node_to_v = {}
-for n in nodes:
-    node_to_v[n] = set()
-num_vertices = 25
-vertices = range(0,num_vertices)
+num_tries = 10
+#N = 5
+#capacity = 7
+#nodes = range(0,N)
+#node_to_v = {}
+#for n in nodes:
+#    node_to_v[n] = set()
+#num_vertices = 25
+#vertices = range(0,num_vertices)
 total = 0
 for i in range(0,num_tries):
+    N = 5
+    capacity = 7
+    nodes = range(0,N)
+    node_to_v = {}
+    for n in nodes:
+        node_to_v[n] = set()
+    num_vertices = 25
+    vertices = range(0,num_vertices)
+
     if os.path.isfile(vertices_file):
         os.remove(vertices_file)
     with open(vertices_file,"wb") as f:
@@ -33,7 +43,7 @@ for i in range(0,num_tries):
     if os.path.isfile(edges_file):
         os.remove(edges_file)
     if name == "erdos_renyi":
-        p = .1
+        p = .5
         with open(edges_file,"wb") as f:
             file_str = ""
             edges = set()
@@ -48,7 +58,7 @@ for i in range(0,num_tries):
     if name == "pref_attachment":
         edges = set()
         with open(edges_file,"wb") as f:
-            p = .25
+            p = .75
             file_str = ""
             v_to_v = {}
             for v in range(0, num_vertices):
@@ -72,4 +82,5 @@ for i in range(0,num_tries):
     percentage = subprocess.check_output(["python","run_script.py",str(N),str(capacity),"60",name+"/"])
     print(percentage)
     total += float(percentage)
+    time.sleep(60)
 print("Average: " + str(total/num_tries))

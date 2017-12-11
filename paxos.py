@@ -1,7 +1,7 @@
 import socket
 import sys
 from psocket import psocket
-from time import sleep
+#from time import sleep
 import pickle
 import threading
 import os
@@ -416,7 +416,7 @@ def server ():
             add_message(0, data)
             psock.close()
         except:
-            sleep(.1)
+            time.sleep(.1)
             continue
 
 def refresh ():
@@ -634,7 +634,7 @@ def run ():
             # start proposer to decide on txn string
             wait = get_wait_time()
             print ("Waiting " + str(wait) + " before proposing")
-            sleep(wait)
+            time.sleep(wait)
             p = threading.Thread(target=proposer,
                                  args=(cur_instance, str(txn)))
             p.daemon = True
@@ -666,5 +666,5 @@ s = threading.Thread(target=server)
 s.daemon = True
 s.start()
 # sleep until all nodes are up
-sleep(2*(len(nodes)))
+time.sleep(2*(len(nodes)))
 run()
