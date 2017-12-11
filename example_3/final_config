@@ -3,10 +3,9 @@ graph G {
 		node [color=white style=filled]
 		style=filled
 		color=lightgrey
-		9
+		1
 		2
 		3
-		1
 		fontsize=8
 		label=cluster_0
 	}
@@ -25,6 +24,7 @@ graph G {
 		style=filled
 		color=lightgrey
 		8
+		9
 		7
 		fontsize=8
 		label=cluster_2
