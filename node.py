@@ -9,6 +9,7 @@ import random
 import time
 from termcolor import colored
 import ast
+import copy
 
 #################### NODE STRUCTURES ####################
 
@@ -17,6 +18,9 @@ message_buf = []
 accept_replies = []
 accept_replies_nodes = []
 prepare_replies = []
+#update_replies = []
+update_replies_v_to_node = []
+update_replies_capacity = []
 
 # globals
 my_node = -1
@@ -148,6 +152,17 @@ def check_accept_replies_nodes (node1, node2):
 
     return (found_node_1 and found_node_2)
 
+def add_update_replies_capacity (c):
+    global update_replies_capacity
+    update_replies_capacity.append(c)
+
+def add_update_replies_v_to_node (vn):
+    global update_replies_v_to_node
+    update_replies_v_to_node.append(vn)
+
+def num_update_replies_v_to_node ():
+    return len(update_replies_v_to_node)
+
 def send_to (send_data, node_id):
     if node_id == my_node:
         add_message(0, send_data)
@@ -187,6 +202,7 @@ CHOSEN_TAG = "<C>"
 PREPARE_REPLY_TAG = "<PR>"
 ACCEPT_REPLY_TAG = "<AR>"
 UPDATE_TAG = "<U>"
+UPDATE_REPLY_TAG = "<UR>"
 
 # chosen message helpers
 
@@ -246,6 +262,31 @@ def is_accept_reply (data):
 def parse_accept_reply (data):
     ret = data[len(ACCEPT_REPLY_TAG):].split('#')
     return ret[0], ret[1], ret[2]
+
+# update message helpers
+
+def is_update (data):
+    return UPDATE_TAG == data[0:len(UPDATE_TAG)]
+
+def update_message (node_id):
+    return (UPDATE_TAG + str(node_id)
+
+def parse_update (data):
+    return data[len(UPDATE_TAG):]
+
+# update reply message helpers
+
+def is_update_reply (data):
+    return UPDATE_REPLY_TAG == data[0:len(UPDATE_REPLY_TAG)]
+
+def update_reply_message (node_id, node_to_capacity_map, vertex_to_node_map):
+    return (UPDATE_REPLY_TAG + str(node_id) + "#" + str(node_to_capacity_map) + 
+            "#" + str(vertex_to_node_map))
+
+def parse_update_reply (data):
+    ret = data[len(UPDATE_REPLY_TAG):].split("#")
+    return ret[0], ret[1], ret[2]
+    
 
 #################### TRANSACTION HELPER ####################
 
@@ -510,7 +551,8 @@ def worker ():
     global cur_min_proposal, cur_accepted_proposal
     global highest_accepted_proposal
     global cur_instance
-
+    global node_to_capacity
+    global v_to_node
     #local_proposer_proposal = proposer_proposal
     #local_max_round = max_round
     #local_cur_min_proposal = cur_min_proposal
@@ -532,8 +574,36 @@ def worker ():
                 proposer_sema[cur_instance].release()
                 print_proposer("RCVD CHOSEN MESSAGE")
 
+        # if we receive an update request from an old node
+        if is_update(data):
+            old_node_id = int(parse_update (data))
+             
+            # create an update reply to this out of date node
+            msg = update_reply_message (old_node_id, node_to_capacity, v_to_node)
+            send_to(msg, old_node_id)
+ 
+        # if we receive an update reply from some more up-to-date nodes 
+        elif is_update_reply(data):
+            ret = parse_update_reply (data)
+
+            old_node_id = int(ret[0])
+            new_node_to_capacity = ast.literal_eval(ret[1])
+            new_v_to_node = ast.literal_eval(ret[2])
+
+            if my_node == old_node_id:
+                add_update_replies_capacity(new_node_to_capacity)
+                add_update_replies_v_to_node(new_v_to_node)
+                if num_update_replies_v_to_node() == len(nodes)/2 + 1:
+                     node_to_capacity = copy.deepcopy(update_replies_capacity[0])
+                     big_v_to_node = {}
+                     for v_to_node_map in update_replies_v_to_node:
+                         big_v_to_node.update(v_to_node_map)
+                     for v in v_to_node:
+                         v_to_node[v] = big_v_to_node[v]
+                                 
+
         # prepare message received by acceptor
-        if is_prepare(data):
+        elif is_prepare(data):
             proposal = Proposal()
             proposal.from_string(parse_prepare(data))
             # push off future instance until we decide this one
@@ -643,6 +713,9 @@ def worker ():
                         res = get_nodes_from_transaction(this_txn)
                         if res != None:
                             (sndr_node, recvr_node) = res
+                            # if this majority of nodes does not contain the nodes
+                            # that pertain to this transaction, abort by replacing
+                            # transaction with no-op "None"
                             if check_accept_replies_nodes (sndr_node, recvr_node) is False:
                                 proposer_proposal.txn = "NONE"
 
