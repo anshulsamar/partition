@@ -563,7 +563,7 @@ def proposer (instance, txn_str):
         print_proposer("SENDING ACCEPT: " + str(proposer_proposal))
         broadcast(accept_message(proposer_proposal))
         proposer_sema[instance].acquire()
-        sleep(random.random()/2)
+        time.sleep(random.random()/2)
     print_proposer("PROPOSER FINISHED INSTANCE: " + str(instance))
     return
 
