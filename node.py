@@ -22,6 +22,7 @@ prepare_replies = []
 update_replies_v_to_node = []
 update_replies_capacity = []
 update_replies_instance = []
+global update_instance
 
 # globals
 my_node = -1
@@ -35,7 +36,7 @@ v_set = None
 v_to_node = None
 v_to_v = None
 node_to_capacity = None
-total_instances = 100
+total_instances = 200
 
 updating = False
 #################### PAXOS HELPERS ####################
@@ -76,6 +77,7 @@ class Proposal:
 
 #me, nodes_set, node_to_v_map, edges_list) paxos globals
 cur_instance = -1
+update_instance = cur_instance
 proposer_proposal = Proposal()
 max_round = 1
 cur_min_proposal = None
@@ -279,7 +281,7 @@ def is_update (data):
     return UPDATE_TAG == data[0:len(UPDATE_TAG)]
 
 def update_message (node_id):
-    return (UPDATE_TAG + str(node_id)
+    return (UPDATE_TAG + str(node_id))
 
 def parse_update (data):
     return data[len(UPDATE_TAG):]
@@ -564,6 +566,11 @@ def worker ():
     global node_to_capacity
     global v_to_node
     global updating
+    global update_replies_capacity
+    global update_replies_v_to_node
+    global update_replies_instance
+    global update_instance
+
     while True:
         worker_lock.acquire()
         data = get_message()
@@ -576,6 +583,7 @@ def worker ():
                 add_message(0, data)
             else:
                 add_transaction(chosen_proposal)
+                print("get chosen, cur_instance release: " + str(cur_instance))
                 proposer_sema[cur_instance].release()
                 print_proposer("RCVD CHOSEN MESSAGE")
 
@@ -608,12 +616,23 @@ def worker ():
                      for v_to_node_map in update_replies_v_to_node:
                          big_v_to_node.update(v_to_node_map)
                      for v in v_to_node:
-                         v_to_node[v] = big_v_to_node[v]
+                         if v in big_v_to_node:
+                             v_to_node[v] = big_v_to_node[v]
                      updating = False
                      update_replies_capacity = []
-                     update_replies_v_to_node = []       
-                     cur_instance = max_update_replies_instance()
-                     update_replies_instance = []           
+                     update_replies_v_to_node = []
+                     max_instance = max_update_replies_instance()
+                     print("releasing current instance sema and then acquiring new sema: " + str(cur_instance) + " and " + str(max_instance))       
+                     proposer_sema[cur_instance].release()
+                     update_instance = max_instance
+
+                     #proposer_sema[max_instance] = threading.Semaphore(0)
+                     #print("acquiring new max_instance... " + str(max_instance))
+                     #proposer_sema[max_instance].acquire()
+                     update_replies_instance = []
+                     #proposer_sema[cur_instance].release()
+                     #cur_instance = max_instance
+                     ##proposer_sema[].release()           
 
         # prepare message received by acceptor
         elif is_prepare(data):
@@ -682,6 +701,7 @@ def worker ():
                         if highest_accepted_proposal.round_num != -1:
                             proposer_proposal.txn = highest_accepted_proposal.txn
                         clear_prepare_replies()
+                        print("after collecting prepare replies proposer_instance release: " + str(proposer_instance))
                         proposer_sema[proposer_instance].release()
                     
         elif is_accept(data):
@@ -747,6 +767,7 @@ def worker ():
                         add_transaction(proposer_proposal)
                         broadcast(chosen_message(proposer_proposal))
                     clear_accept_replies()
+                    print(" sending chosen proposer_instance release: " + str(proposer_instance))
                     proposer_sema[proposer_instance].release()
         worker_lock.release()
 
@@ -759,10 +780,12 @@ def proposer (instance, txn):
         print_proposer("SENDING PREPARE: " +
                        str(proposer_proposal))
         broadcast(prepare_message(proposer_proposal))
+        print("acquiring proposer sema after broadcast prepare: " + str(instance))
         proposer_sema[instance].acquire()
         if chosen(instance): return
         print_proposer("SENDING ACCEPT: " + str(proposer_proposal))
         broadcast(accept_message(proposer_proposal))
+        print("acquiring proposer sema after broadcast accept: " + str(instance))
         proposer_sema[instance].acquire()
     print_proposer("PROPOSER FINISHED INSTANCE: " + str(instance))
     return
@@ -815,6 +838,7 @@ def get_wait_time():
 def run ():
 
     global cur_instance, my_node, v_set, v_to_v, v_to_node, node_to_capacity  
+    global update_instance
     worker_lock.acquire()
 
     # worker reads messages (currently locked)
@@ -823,8 +847,9 @@ def run ():
     m.start()
 
     cur_instance = 1
-    
-    for i in range(0,total_instances):
+    #for i in range(0,total_instances):
+    while cur_instance < total_instances + 1:
+        cur_instance = update_instance
         print_run("STARTING PAXOS #" + str(cur_instance))
         if not chosen(cur_instance):
             txn = suggest_transaction(my_node, v_set, v_to_v, v_to_node, node_to_capacity)
@@ -854,6 +879,7 @@ def run ():
         #print("After:")
         #print_graph_structures()
         cur_instance += 1
+        update_instance += 1
     print "done."
 
 print "Starting"
