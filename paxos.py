@@ -387,12 +387,10 @@ def print_run(x):
     print x
 
 def print_proposer (x):
-    return
-    #print colored("\t" + x, "blue")
+    print colored("\t" + x, "blue")
 
 def print_acceptor (x):
-    return
-    #print colored("\t\t" + x, "cyan")
+    print colored("\t\t" + x, "cyan")
 
 def print_graph_structures():
     global my_node, v_set, v_to_node, v_to_v, node_to_capacity
