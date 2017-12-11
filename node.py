@@ -30,6 +30,7 @@ v_set = None
 v_to_node = None
 v_to_v = None
 node_to_capacity = None
+total_instances = 100
 
 #################### PAXOS HELPERS ####################
 
@@ -185,6 +186,7 @@ ACCEPT_TAG = "<A>"
 CHOSEN_TAG = "<C>"
 PREPARE_REPLY_TAG = "<PR>"
 ACCEPT_REPLY_TAG = "<AR>"
+UPDATE_TAG = "<U>"
 
 # chosen message helpers
 
@@ -549,6 +551,10 @@ def worker ():
                     send_to(send_data, proposal.node_id)
                 else:
                     print_acceptor("MSG IGNORED")
+            elif proposal.instance > cur_instance + 4:
+                print("we need to update node to capacity map and vertex to node map")
+                print("need to broadcast, cur_instance is: " + str(cur_instance))
+                print("proposal instance is: " + str(proposal.instance))
             
         elif is_prepare_reply(data):
             ret = parse_prepare_reply(data)
@@ -562,27 +568,33 @@ def worker ():
             acceptor_id = ret[2]
             # ignore old messages
             if sender == proposer_proposal:
-                print_proposer("PREPARE_REPLY Node #" +
-                               str(acceptor_id) + " :" + str(accepted))
-                add_prepare_reply(accepted)
-                if num_prepare_replies() == len(nodes)/2 + 1:
-                    print_proposer("RCVD PREPARE MAJORITY")
-                    highest_accepted_proposal = max(prepare_replies)
+                if accepted.instance > cur_instance + 4:
+                    print("we need to update node to capacity map and vertex to node map")
+                    print("need to broadcast, cur_instance is: " + str(cur_instance))
+                    print("proposal instance is: " + str(proposal.instance))
 
-                    start = time.time()
+                else:
+                    print_proposer("PREPARE_REPLY Node #" +
+                                   str(acceptor_id) + " :" + str(accepted))
+                    add_prepare_reply(accepted)
+                    if num_prepare_replies() == len(nodes)/2 + 1:
+                        print_proposer("RCVD PREPARE MAJORITY")
+                        highest_accepted_proposal = max(prepare_replies)
 
-                    this_txn = highest_accepted_proposal.txn
-                    if (type(this_txn).__name__ == "str"):
-                        print("tada: " + this_txn)
-                        res = get_nodes_from_transaction(this_txn)
-                        if res != None:
-                            (sndr_node, recvr_node) = res
-                            print(check_prepare_replies_nodes (sndr_node, recvr_node))
-                    
-                    if highest_accepted_proposal.round_num != -1:
-                        proposer_proposal.txn = highest_accepted_proposal.txn
-                    clear_prepare_replies()
-                    proposer_sema[proposer_instance].release()
+                        start = time.time()
+
+                        this_txn = highest_accepted_proposal.txn
+                        if (type(this_txn).__name__ == "str"):
+                            print("tada: " + this_txn)
+                            res = get_nodes_from_transaction(this_txn)
+                            if res != None:
+                                (sndr_node, recvr_node) = res
+                                print(check_prepare_replies_nodes (sndr_node, recvr_node))
+                        
+                        if highest_accepted_proposal.round_num != -1:
+                            proposer_proposal.txn = highest_accepted_proposal.txn
+                        clear_prepare_replies()
+                        proposer_sema[proposer_instance].release()
                     
         elif is_accept(data):
             proposal = Proposal()
@@ -721,7 +733,7 @@ def run ():
 
     cur_instance = 1
     
-    for i in range(0,10):
+    for i in range(0,total_instances):
         print_run("STARTING PAXOS #" + str(cur_instance))
         if not chosen(cur_instance):
             txn = suggest_transaction(my_node, v_set, v_to_v, v_to_node, node_to_capacity)
