@@ -4,7 +4,7 @@ import subprocess
 import os
 import shutil
 
-name = "pref_attachment"
+name = "erdos_renyi"
 if os.path.exists(name + "/"):
     shutil.rmtree(name + "/")
 os.makedirs(name + "")
@@ -69,7 +69,6 @@ for i in range(0,num_tries):
                             v_to_v[w].append(v)
                             file_str += str(v) + "," + str(w) + "\n"
             f.write(file_str[:-1])
-    exit(1)
     percentage = subprocess.check_output(["python","run_script.py",str(N),str(capacity),"60",name+"/"])
     print(percentage)
     total += float(percentage)

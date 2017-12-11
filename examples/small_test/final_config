@@ -1,0 +1,19 @@
+graph G {
+	subgraph cluster_0 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		fontsize=8
+		label=cluster_0
+	}
+	subgraph cluster_1 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		1
+		2
+		fontsize=8
+		label=cluster_1
+	}
+	1 -- 2
+}

@@ -1,0 +1,17 @@
+Code Acknowledgemnets
+
+Our paxos implementation is based on basic paxos (see lecture
+below). We followed variable names from here to make it easier for us to debug:
+
+ https://ramcloud.stanford.edu/~ongaro/userstudy/paxos.pdf
+
+Note that we used basic boilerplate networking code from following
+ tutorials:
+
+https://pymotw.com/2/socket/tcp.html
+
+https://stackoverflow.com/questions/23828264/how-to-make-a-simple-multithreaded-socket-server-in-python-that-remembers-client
+
+https://docs.python.org/2/howto/sockets.html#socket-howto
+
+https://pymotw.com/2/threading/

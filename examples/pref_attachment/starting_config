@@ -1,0 +1,86 @@
+graph G {
+	subgraph cluster_0 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		2
+		18
+		21
+		fontsize=8
+		label=cluster_0
+	}
+	subgraph cluster_1 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		1
+		5
+		6
+		11
+		12
+		20
+		fontsize=8
+		label=cluster_1
+	}
+	subgraph cluster_2 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		0
+		9
+		13
+		19
+		23
+		24
+		fontsize=8
+		label=cluster_2
+	}
+	subgraph cluster_3 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		8
+		15
+		4
+		22
+		7
+		fontsize=8
+		label=cluster_3
+	}
+	subgraph cluster_4 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		16
+		17
+		10
+		3
+		14
+		fontsize=8
+		label=cluster_4
+	}
+	23 -- 4
+	3 -- 0
+	14 -- 4
+	8 -- 0
+	18 -- 4
+	24 -- 4
+	10 -- 8
+	9 -- 0
+	20 -- 0
+	5 -- 0
+	19 -- 18
+	6 -- 0
+	16 -- 2
+	1 -- 0
+	22 -- 0
+	7 -- 0
+	12 -- 0
+	11 -- 8
+	17 -- 0
+	21 -- 3
+	2 -- 0
+	15 -- 6
+	4 -- 3
+	13 -- 0
+}

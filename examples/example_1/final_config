@@ -1,0 +1,32 @@
+graph G {
+	subgraph cluster_0 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		1
+		2
+		5
+		fontsize=8
+		label=cluster_0
+	}
+	subgraph cluster_1 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		3
+		4
+		fontsize=8
+		label=cluster_1
+	}
+	subgraph cluster_2 {
+		node [color=white style=filled]
+		style=filled
+		color=lightgrey
+		fontsize=8
+		label=cluster_2
+	}
+	1 -- 2
+	5 -- 2
+	5 -- 4
+	3 -- 4
+}
