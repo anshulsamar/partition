@@ -13,7 +13,7 @@ paxos_rounds = int(sys.argv[3])
 directory = sys.argv[4]
 
 # set up everything
-starting_edge_out = subprocess.check_output(["python","run.py",str(num_nodes),str(num_capacity),"-d",directory])
+starting_edge_out = subprocess.check_output(["python","setup.py",str(num_nodes),str(num_capacity),"-d",directory])
 
 
 # run paxos
@@ -33,7 +33,7 @@ for i in range(0,num_nodes):
 
 
 # check how we did
-final_edge_out = subprocess.check_output(["python","final_graph.py",str(num_nodes),directory])
+final_edge_out = subprocess.check_output(["python","gather.py",str(num_nodes),directory])
 percentage = (float(starting_edge_out)-float(final_edge_out))/float(starting_edge_out)
 print percentage
 

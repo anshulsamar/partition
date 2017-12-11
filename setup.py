@@ -131,7 +131,7 @@ def create_nodes(nodes_set, node_to_port_map, node_to_v_map, v_to_v_map, v_to_no
 
 
 if (len(sys.argv) < 5):
-    print("USAGE: python run.py [#nodes] [capacity] [-r/-d] [dir]")
+    print("USAGE: python setup.py [#nodes] [capacity] [-r/-d] [dir]")
     exit()
 
 # Redundant data structures for easy access

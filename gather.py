@@ -36,7 +36,7 @@ def print_graph (fname, nodes_set, node_to_v_map, edges_list):
     g.render(fname)
 
 if (len(sys.argv) < 3):
-    print("USAGE: python final_graph.py [#nodes] [dir]")
+    print("USAGE: python gather.py [#nodes] [dir]")
     exit()
 
 N = int(sys.argv[1])                    # max nodes
