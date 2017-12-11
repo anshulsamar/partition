@@ -21,6 +21,7 @@ prepare_replies = []
 #update_replies = []
 update_replies_v_to_node = []
 update_replies_capacity = []
+update_replies_instance = []
 
 # globals
 my_node = -1
@@ -36,6 +37,7 @@ v_to_v = None
 node_to_capacity = None
 total_instances = 100
 
+updating = False
 #################### PAXOS HELPERS ####################
 
 class Proposal:
@@ -160,8 +162,16 @@ def add_update_replies_v_to_node (vn):
     global update_replies_v_to_node
     update_replies_v_to_node.append(vn)
 
+def add_update_replies_instance (i):
+    global update_replies_instance
+    update_replies_instance.append(i)
+
 def num_update_replies_v_to_node ():
     return len(update_replies_v_to_node)
+
+def max_update_replies_instance ():
+    global update_replies_instance
+    return max(update_replies_instance)
 
 def send_to (send_data, node_id):
     if node_id == my_node:
@@ -279,13 +289,13 @@ def parse_update (data):
 def is_update_reply (data):
     return UPDATE_REPLY_TAG == data[0:len(UPDATE_REPLY_TAG)]
 
-def update_reply_message (node_id, node_to_capacity_map, vertex_to_node_map):
-    return (UPDATE_REPLY_TAG + str(node_id) + "#" + str(node_to_capacity_map) + 
-            "#" + str(vertex_to_node_map))
+def update_reply_message (node_id, instance_num, node_to_capacity_map, vertex_to_node_map):
+    return (UPDATE_REPLY_TAG + str(node_id) + "#" + str(instance_num) + "#" + 
+           str(node_to_capacity_map) + "#" + str(vertex_to_node_map))
 
 def parse_update_reply (data):
     ret = data[len(UPDATE_REPLY_TAG):].split("#")
-    return ret[0], ret[1], ret[2]
+    return ret[0], ret[1], ret[2], ret[3]
     
 
 #################### TRANSACTION HELPER ####################
@@ -553,12 +563,7 @@ def worker ():
     global cur_instance
     global node_to_capacity
     global v_to_node
-    #local_proposer_proposal = proposer_proposal
-    #local_max_round = max_round
-    #local_cur_min_proposal = cur_min_proposal
-    #local_cur_accepted_proposal = cur_accepted_proposal
-    #local_highest_accepted_proposal = highest_accepted_proposal
-    #local_cur_instance = cur_instance 
+    global updating
     while True:
         worker_lock.acquire()
         data = get_message()
@@ -579,7 +584,7 @@ def worker ():
             old_node_id = int(parse_update (data))
              
             # create an update reply to this out of date node
-            msg = update_reply_message (old_node_id, node_to_capacity, v_to_node)
+            msg = update_reply_message (old_node_id, cur_instance, node_to_capacity, v_to_node)
             send_to(msg, old_node_id)
  
         # if we receive an update reply from some more up-to-date nodes 
@@ -587,12 +592,16 @@ def worker ():
             ret = parse_update_reply (data)
 
             old_node_id = int(ret[0])
-            new_node_to_capacity = ast.literal_eval(ret[1])
-            new_v_to_node = ast.literal_eval(ret[2])
+            instance_num = int(ret[1])
+            new_node_to_capacity = ast.literal_eval(ret[2])
+            new_v_to_node = ast.literal_eval(ret[3])
 
             if my_node == old_node_id:
                 add_update_replies_capacity(new_node_to_capacity)
                 add_update_replies_v_to_node(new_v_to_node)
+                add_update_replies_instance(instance_num)
+                # if we receive update replies from majority of nodes,
+                # update graph data structures and current instance number
                 if num_update_replies_v_to_node() == len(nodes)/2 + 1:
                      node_to_capacity = copy.deepcopy(update_replies_capacity[0])
                      big_v_to_node = {}
@@ -600,7 +609,11 @@ def worker ():
                          big_v_to_node.update(v_to_node_map)
                      for v in v_to_node:
                          v_to_node[v] = big_v_to_node[v]
-                                 
+                     updating = False
+                     update_replies_capacity = []
+                     update_replies_v_to_node = []       
+                     cur_instance = max_update_replies_instance()
+                     update_replies_instance = []           
 
         # prepare message received by acceptor
         elif is_prepare(data):
@@ -621,11 +634,14 @@ def worker ():
                     send_to(send_data, proposal.node_id)
                 else:
                     print_acceptor("MSG IGNORED")
-            elif proposal.instance > cur_instance + 4:
-                print("we need to update node to capacity map and vertex to node map")
-                print("need to broadcast, cur_instance is: " + str(cur_instance))
-                print("proposal instance is: " + str(proposal.instance))
-            
+            elif proposal.instance > cur_instance + 9 and updating is False:
+                #print("we need to update node to capacity map and vertex to node map")
+                #print("need to broadcast, cur_instance is: " + str(cur_instance))
+                #print("proposal instance is: " + str(proposal.instance))
+                update_req = update_message(my_node)
+                broadcast(update_req)
+                updating = True                
+
         elif is_prepare_reply(data):
             ret = parse_prepare_reply(data)
             # proposal that caused this reply
@@ -638,11 +654,13 @@ def worker ():
             acceptor_id = ret[2]
             # ignore old messages
             if sender == proposer_proposal:
-                if accepted.instance > cur_instance + 4:
-                    print("we need to update node to capacity map and vertex to node map")
-                    print("need to broadcast, cur_instance is: " + str(cur_instance))
-                    print("proposal instance is: " + str(proposal.instance))
-
+                if accepted.instance > cur_instance + 9 and updating is False:
+                    #print("we need to update node to capacity map and vertex to node map")
+                    #print("need to broadcast, cur_instance is: " + str(cur_instance))
+                    #print("proposal instance is: " + str(proposal.instance))
+                    update_req = update_message(my_node)
+                    broadcast(update_req)
+                    updating = True                
                 else:
                     print_proposer("PREPARE_REPLY Node #" +
                                    str(acceptor_id) + " :" + str(accepted))
