@@ -3,11 +3,11 @@ graph G {
 		node [color=white style=filled]
 		style=filled
 		color=lightgrey
-		11
-		12
-		13
-		14
-		15
+		8
+		9
+		10
+		6
+		7
 		fontsize=8
 		label=cluster_0
 	}
@@ -15,11 +15,11 @@ graph G {
 		node [color=white style=filled]
 		style=filled
 		color=lightgrey
-		8
-		9
-		10
-		6
-		7
+		2
+		11
+		12
+		14
+		15
 		fontsize=8
 		label=cluster_1
 	}
@@ -28,10 +28,10 @@ graph G {
 		style=filled
 		color=lightgrey
 		1
-		2
 		3
 		4
 		5
+		13
 		fontsize=8
 		label=cluster_2
 	}
