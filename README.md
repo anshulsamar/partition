@@ -1,11 +1,16 @@
 # Partition 
 
 Partition is a repartitioning system for distributed
-graphs. Partition operates in a decentralized and dynamic
-fashion, reorganizing vertices and edges across server nodes, without
-the need of a master. To reduce project scope and avoid logging and retransmission, we assume all nodes are
-live and that messages are eventually delivered. This project was done
-for CS244B (Distributed Systems) and CS224W (Analysis of Networks). 
+graphs. Partition operates in a decentralized fashion, reorganizing vertices and edges across server nodes, without
+the need of a master. We operate in an asychronous setting, but assume messages are eventually delivered. The
+implementation on this branch further assumes that
+nodes are always live. The
+implementation on /ft branch is written to survive up to majority faults (debugging/work in
+progress).
+
+See paper for applications and results. 
+
+This project was done for CS244B (Distributed Systems) and CS224W (Analysis of Networks). 
 
 paxos.py: node server implementation, basic paxos
 
