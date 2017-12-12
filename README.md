@@ -5,8 +5,10 @@ graphs. Partition operates in a decentralized fashion, reorganizing vertices and
 the need of a master. We operate in an asychronous setting, but assume messages are eventually delivered. The
 implementation on this branch further assumes that
 nodes are always live. The
-implementation on /ft branch is written to survive up to majority faults (debugging/work in
-progress).
+implementation on /ft branch is written to survive up to f node failures, where the cluster size is 2f + 1
+(it takes a majority to commit a transaction). For example, nodes can
+all die and start back up again and continue
+repartioning (debugging/work in progress).
 
 See paper for applications and results. 
 
