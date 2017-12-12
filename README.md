@@ -10,9 +10,18 @@ all die and start back up again and continue where they left
 off. However, we need a majority of nodes alive for any repartioning
 to occur due to consensus. This branch is still being debugged.
 
-See paper for applications and results. Example:
+See paper for applications and results. Example (graphed with
+Graphviz):
 
-![Image of 3 complete graphs over 5 separate nodes](demo/ex8_1.png?raw=true "Before")
+Graph over 5 nodes:
+
+![Image of 3 complete graphs over 5 separate
+ nodes](demo/ex8_1.png?raw=true "Before")
+
+After repartioning, each cluster is moved to a single server:
+
+<img src="demo/ex8_2.png" width="40%">
+
 ![Image of 3 nodes each with a complete graph, post repartioning](demo/ex8_2.png?raw=true "After")
 
 This project was done for CS244B (Distributed Systems) and CS224W (Analysis of Networks). 
