@@ -15,14 +15,14 @@ Graphviz):
 
 Graph over 5 nodes:
 
-![Image of 3 complete graphs over 5 separate
- nodes](demo/ex8_1.png?raw=true "Before")
+<img src="demo/ex8_1.png" width="40%">
 
 After repartioning, each cluster is moved to a single server:
 
 <img src="demo/ex8_2.png" width="40%">
 
-![Image of 3 nodes each with a complete graph, post repartioning](demo/ex8_2.png?raw=true "After")
+Note here, the remaining two servers are not used. In practice, they
+may have other vertices and clusters on them. 
 
 This project was done for CS244B (Distributed Systems) and CS224W (Analysis of Networks). 
 
