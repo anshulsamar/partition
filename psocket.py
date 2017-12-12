@@ -1,5 +1,7 @@
 # Implementation extended from class mysocket:
 # https://docs.python.org/2/howto/sockets.html#socket-howto
+# see acknowledgements for
+# links to boilerplate networking/threading code
 
 import socket
 from socket import error

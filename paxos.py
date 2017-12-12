@@ -1,3 +1,6 @@
+# see acknowledgements for
+# links to boilerplate networking/threading code
+
 import socket
 import sys
 from psocket import psocket
