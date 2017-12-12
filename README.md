@@ -10,7 +10,10 @@ all die and start back up again and continue where they left
 off. However, we need a majority of nodes alive for any repartioning
 to occur due to consensus. This branch is still being debugged.
 
-See paper for applications and results. 
+See paper for applications and results. Example:
+
+![Image of 3 complete graphs over 5 separate nodes](demo/ex8_1.png?raw=true "Before")
+![Image of 3 nodes each with a complete graph, post repartioning](demo/ex8_2.png?raw=true "After")
 
 This project was done for CS244B (Distributed Systems) and CS224W (Analysis of Networks). 
 
