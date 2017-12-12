@@ -24,8 +24,6 @@ After repartioning, each cluster is moved to a single server:
 Note here, the remaining two servers are not used. In practice, they
 may have other vertices and clusters on them. 
 
-This project was done for CS244B (Distributed Systems) and CS224W (Analysis of Networks). 
-
 paxos.py: node server implementation, basic paxos
 
 setup.py: set up directories and starting config
