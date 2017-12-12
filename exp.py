@@ -5,6 +5,8 @@ import os
 import shutil
 import time
 
+# pref attachment model from lecture 11 cs224w
+
 name = "erdos_renyi"
 if os.path.exists(name + "/"):
     shutil.rmtree(name + "/")
