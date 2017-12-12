@@ -16,6 +16,7 @@ import ast
 message_buf = []
 accept_replies = []
 prepare_replies = []
+update_replies = []
 
 # globals
 my_node = -1
@@ -71,13 +72,23 @@ cur_min_proposal = None
 
 cur_accepted_proposal = Proposal()
 highest_accepted_proposal = None
-
+total_updates = 0
 # locks
 proposer_sema = {}
 message_buf_lock = threading.Lock()
 worker_lock = threading.Lock()
 
 # message helpers
+
+def add_update_reply (txn_list):
+    update_replies.append(txn_list)
+
+def num_update_replies ():
+    return len(update_replies)
+
+def clear_update_replies ():
+    global update_replies
+    update_replies = []
 
 def add_prepare_reply (proposal):
     prepare_replies.append(proposal)
@@ -137,6 +148,8 @@ ACCEPT_TAG = "<A>"
 CHOSEN_TAG = "<C>"
 PREPARE_REPLY_TAG = "<PR>"
 ACCEPT_REPLY_TAG = "<AR>"
+UPDATE_TAG = "<U>"
+UPDATE_REPLY_TAG = "<UR>"
 
 # chosen message helpers
 
@@ -196,6 +209,29 @@ def is_accept_reply (data):
 def parse_accept_reply (data):
     ret = data[len(ACCEPT_REPLY_TAG):].split('#')
     return ret[0], ret[1], ret[2]
+
+
+# update messages
+
+def is_update (data):
+    return UPDATE_TAG == data[0:len(UPDATE_TAG)]
+
+def update_message (node_id):
+    return (UPDATE_TAG + str(node_id))
+
+def parse_update (data):
+    return int(data[len(UPDATE_TAG):])
+
+# update reply messages
+
+def is_update_reply (data):
+    return UPDATE_REPLY_TAG == data[0:len(UPDATE_REPLY_TAG)]
+
+def update_reply_message (txn_list):
+    return (UPDATE_REPLY_TAG + str(txn_list))
+
+def parse_update_reply (data):
+    return ast.literal_eval(data[len(UPDATE_REPLY_TAG):])
 
 #################### TRANSACTION HELPER ####################
 
@@ -260,15 +296,6 @@ class Transaction:
         # Get the new node
         new_node_first = txn_str.find(NEWNODETAG) + len(NEWNODETAG)
         self.new_node = int(txn_str[new_node_first:])
-
-def add_transaction_from_proposal (p):
-    instance = p.instance
-    node_id = p.node_id
-    txn_str = p.txn
-    t_lock.acquire()
-    if instance not in transactions:
-        transactions[instance] = (node_id, txn_str)
-    t_lock.release()
 
 def get_transaction_by_instance (instance):
     t_lock.acquire()
@@ -335,7 +362,9 @@ def suggest_transaction ():
     return txn
 
 def log_transaction(this_node, vertex_set, this_v_to_v, this_v_to_node, this_node_to_capacity):
-    directory = "node_" + str(this_node) + "/"
+
+    global my_node
+    directory = "node_" + str(my_node) + "/"
 
     v_set_f = open(directory + "v_set.p", "wb")
     pickle.dump(vertex_set, v_set_f)
@@ -381,16 +410,54 @@ def execute_transaction (txn):
 
     print "Executed: " + str(txn)
 
+
+def add_transaction_from_proposal (p):
+    instance = p.instance
+    node_id = p.node_id
+    txn_str = p.txn
+    t_lock.acquire()
+    if instance not in transactions:
+        transactions[instance] = (node_id, txn_str)
+
+    t_lock.release()
+   
+def add_transaction_from_update (update):
+    global cur_instance
+    instance = cur_instance
+    while True:
+        if instance in update:
+            transactions[instance] = update[instance]
+            txn = Transaction(-1,-1,-1,[],[])
+            proposer_sema[instance].release()
+            proposer_sema[instance].release()
+            instance += 1
+        else:
+            break
+             
+def log_paxos():
+    global cur_instance, proposer_proposal, max_round
+    global cur_min_proposal, cur_accepted_proposal, highest_accepted_proposal
+    global accept_replies, prepare_replies
+    global my_node
+    directory = "node_" + str(my_node) + "/"
+    paxos_data = (cur_instance, proposer_proposal, max_round,
+                  cur_min_proposal, cur_accepted_proposal,
+                  highest_accepted_proposal, accept_replies, prepare_replies)
+    paxos_f = open(directory + "paxos.p", "wb")
+    pickle.dump(paxos_data, paxos_f)
+    
 #################### PRINT HELPER ####################
 
 def print_run(x):
     print x
 
 def print_proposer (x):
-    print colored("\t" + x, "blue")
+    return
+    #print colored("\t" + x, "blue")
 
 def print_acceptor (x):
-    print colored("\t\t" + x, "cyan")
+    return
+    #print colored("\t\t" + x, "cyan")
 
 def print_graph_structures():
     global my_node, v_set, v_to_node, v_to_v, node_to_capacity
@@ -428,7 +495,33 @@ def refresh ():
     cur_min_proposal = None
     cur_accepted_proposal = Proposal()
     highest_accepted_proposal = None
+
+def update_worker():
+    global transactions
+    global total_updates
+    while True:
+        message_buf_lock.acquire()
+        if len(message_buf) > 0:
+            data = message_buf[-1]
+        else:
+            data = ""
         
+        if is_update(data):
+            d2 = message_buf.pop()
+            if d2 != data: print("something fishy")
+            node_id = parse_update(data)
+            t_lock.acquire()
+            send_to(update_reply_message(transactions), node_id)
+            t_lock.release()
+        if is_update_reply(data):
+            d2 = message_buf.pop()
+            if d2 != data: print("something fishy")
+            print("Received update")
+            transaction_list = parse_update_reply(data)
+            add_transaction_from_update (transaction_list)
+        message_buf_lock.release()
+            
+            
 def worker ():
     global proposer_proposal, max_round
     global cur_min_proposal, cur_accepted_proposal
@@ -472,10 +565,17 @@ def worker ():
                     send_data = prepare_reply_message(proposal,
                                                       cur_accepted_proposal,
                                                       my_node)
+                    log_paxos()
                     send_to(send_data, proposal.node_id)
                 else:
                     print_acceptor("MSG IGNORED")
-            
+            if proposal.instance < cur_instance:
+                t_lock.acquire()
+                log_paxos()
+                print("Received Prepare from " + str(proposal.node_id) + " for instance " + str(proposal.instance) + " but currently on instance: " + str(cur_instance))
+                send_to(update_reply_message(transactions), proposal.node_id)
+                t_lock.release()
+                
         elif is_prepare_reply(data):
             ret = parse_prepare_reply(data)
             # proposal that caused this reply
@@ -516,8 +616,15 @@ def worker ():
                 send_data = accept_reply_message(proposal,
                                                  cur_min_proposal,
                                                  my_node)
+                log_paxos()
                 send_to(send_data, proposal.node_id)
-
+            if proposal.instance < cur_instance:
+                t_lock.acquire()
+                log_paxos()
+                print("Received Accept from " + str(proposal.node_id) + " for instance " + str(proposal.instance) + " but currently on instance: " + str(cur_instance))
+                send_to(update_reply_message(transactions), proposal.node_id)
+                t_lock.release()
+                
         elif is_accept_reply (data):
             ret = parse_accept_reply(data)
             # proposal that caused this reply
@@ -568,6 +675,7 @@ def proposer (instance, txn_str):
 def setup ():
     global my_node, direct, config, my_port, nodes, node_to_port, \
            v_set, v_to_node, v_to_v, node_to_capacity
+
     my_node = int(sys.argv[1])
     directory = "node_" + str(my_node) + "/"
 
@@ -597,6 +705,29 @@ def setup ():
     node_to_capacity = pickle.load(node_to_capacity_f)
     node_to_capacity_f.close()
 
+
+def paxos_setup ():
+    global cur_instance, proposer_proposal, max_round
+    global cur_min_proposal, cur_accepted_proposal, highest_accepted_proposal
+    global accept_replies, prepare_replies
+
+    directory = "node_" + str(my_node) + "/"
+    cur_instance = 1
+    
+    if os.path.isfile("paxos.p"):
+        paxos_f = open(directory + "paxos.p", "rb")
+        paxos_data = pickle.load(paxos_f)
+        cur_instance, proposer_proposal, max_round, cur_min_proposal, cur_accepted_proposal, highest_accepted_proposal, accept_replies, prepare_replies = paxos_data
+        paxos_f.close()
+
+        #if cur_instance != 1:
+        #u = threading.Thread(target=update_worker)
+        #u.daemon = True
+        #u.start()
+        #send_data = update_message(my_node)
+        #broadcast(send_data)
+        #update_sema.acquire()
+
 def get_wait_time():
     txn_count = 0
     t_lock.acquire()
@@ -614,19 +745,16 @@ def run ():
 
     global cur_instance, my_node, v_set, v_to_v, v_to_node, node_to_capacity  
     worker_lock.acquire()
-
+    print(node_to_capacity)
     # worker reads messages (currently locked)
     m = threading.Thread(target=worker)
     m.daemon = True
     m.start()
-
-    cur_instance = 1
     
-    for i in range(0,int(sys.argv[2])):
+    for i in range(cur_instance-1,int(sys.argv[2])):
         print_run("STARTING PAXOS #" + str(cur_instance))
         if not chosen(cur_instance):
             txn = suggest_transaction()
-            proposer_sema[cur_instance] = threading.Semaphore(0)
             # start worker for this instance
             worker_lock.release()
             # start proposer to decide on txn string
@@ -645,11 +773,7 @@ def run ():
             refresh()
         node_id, txn = get_transaction_by_instance(cur_instance)
         print "Executing: " + str(txn) + " from Node #" + str(node_id)
-        #print("Before:")
-        #print_graph_structures()
         execute_transaction (txn)
-        #print("After:")
-        #print_graph_structures()
         cur_instance += 1
     print "done."
 
@@ -663,6 +787,18 @@ setup()
 s = threading.Thread(target=server)
 s.daemon = True
 s.start()
+paxos_setup()
+
+# set up one semaphore for every instance
+instance = cur_instance
+for i in range(0,int(sys.argv[2])):
+    proposer_sema[instance] = threading.Semaphore(0)
+    instance += 1
+        
+u = threading.Thread(target=update_worker)
+u.daemon = True
+u.start()
+
 # sleep until all nodes are up
 time.sleep(2*(len(nodes)))
 run()
